@@ -1,0 +1,19 @@
+.pym/*
+pymacaron
+pymacaron_async
+pymacaron_core
+pymacaron_dynamodb
+pymacaron_unit
+docker
+Dockerfile
+Dockerrun.aws.json
+**/__pycache__
+*.tar
+**/*.pyc
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+.ebextensions

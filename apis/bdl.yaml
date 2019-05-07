@@ -1,0 +1,626 @@
+# This is a swagger description of the certificate service
+
+swagger: '2.0'
+info:
+  title: Certificate API
+  version: "0.0.1"
+  description: |
+
+    This is the Bazardelux API.
+
+    # OpenAPI Specification
+
+    The OpenAPI specification (aka Swagger specification) for the Bazardelux
+    API is available [here](http://api.bazardelux.com/doc/bdl.yaml).
+
+    # Authentication
+
+    All API endpoints require authentication.
+
+    Authentication is achieved by passing a JWT token in the HTTP Authorization
+    header:
+
+    `Authorization: Bearer {jwt token}`
+
+    # Errors
+
+    If an api call fails, a json Error object is returned. It typically looks like
+
+    ```
+    {
+        "error": "INVALID_USER",                       # Code identifying this error
+        "error_description": "Some cryptic message",   # Developer friendly explanation
+        "user_message": "Invalid user",                # End-user friendly explanation
+        "status": 401                                  # Same as the response's HTTP status code
+    }
+    ```
+
+    # Common error codes
+
+    All API endpoints that require authentication may return the following errors:
+
+    * TOKEN_EXPIRED: The JWT token has expired.
+    * AUTHORIZATION_HEADER_MISSING: This api call requires authentication, but the Authorization header was missing.
+    * TOKEN_INVALID: This token is invalid or corrupt.
+
+    All API endpoints that take arguments (in the query path, or parameters, or body)
+    may return the error:
+
+    * INVALID_PARAMETER: Some of the parameters sent have wrong formats.
+
+    Any error with a status code >= 500 indicates an internal server
+    error. Those errors automatically trigger an internal alert and will be
+    acted upon.
+
+    Further errors specific to given API endpoints are described in the
+    endpoint's definition.
+
+    # Date formats
+
+    All dates are expressed in the form 'YYYY-MM-DD', as in '2016-10-16'.
+
+host: api.bazardelux.com
+schemes:
+  - https
+basePath: /v1
+produces:
+  - application/json
+paths:
+
+  /v1/search/items:
+    get:
+      summary: Search the database of items for sale.
+      description:
+
+        Search the database of items currently for sale and return a list of
+        items to display in the frontend.
+
+      parameters:
+        - in: query
+          name: query
+          description: Search for these words.
+          required: false
+          type: string
+        - in: query
+          name: page
+          description: Page number (0 is first page)
+          required: false
+          type: number
+        - in: query
+          name: page_size
+          description: Number of items per page (30 by default)
+          required: false
+          type: number
+        - in: query
+          name: real
+          description: Query the live index if true (default) else the test one.
+          required: false
+          type: string
+        - in: query
+          name: country
+          description: Restrict search to this country.
+          required: false
+          type: string
+        - in: query
+          name: index
+          description: Which index to query (default to BDL).
+          required: false
+          type: string
+
+      tags:
+        - Search
+      produces:
+        - application/json
+      x-bind-server: bdl.api.item.do_search_items_for_sale
+      x-bind-client: search_items_for_sale
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Matching items
+          schema:
+            $ref: '#/definitions/ItemsForSale'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/item/{item_id}:
+    get:
+      summary: Retrieve data of an item
+      description: |
+
+        Fetch an item''s data and whether the item is sold or still for sale.
+
+      parameters:
+        - in: path
+          name: item_id
+          description: Unique ID of this item.
+          required: true
+          type: string
+      tags:
+        - Items
+      produces:
+        - application/json
+      x-bind-server: bdl.api.item.do_get_item
+      x-bind-client: get_item
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: ItemForSale
+          schema:
+            $ref: '#/definitions/Item'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/item/{item_id}/archive:
+    post:
+      summary: Archive this item
+      description: |
+
+        Archive this item, hence removing it from search results.
+
+      parameters:
+        - in: path
+          name: item_id
+          description: Unique ID of this item.
+          required: true
+          type: string
+        - in: body
+          name: body
+          description: Data on the sold item, if any.
+          required: true
+          schema:
+            $ref: "#/definitions/ArchiveReason"
+
+      tags:
+        - Items
+      produces:
+        - application/json
+      x-bind-server: bdl.api.item.do_archive_item
+      x-bind-client: archive_item
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: ItemForSale
+          schema:
+            $ref: '#/definitions/Item'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/announce/queue:
+    post:
+      summary: Submit one or more announces for curation.
+      description: |
+
+        Submit a list of announces that may or may not make it into bazardelux.
+
+        The data in those announces may be quite minimal if they were extracted
+        from the wall listing on the scraped site. But it can also be a more
+        complete data set obtained by parsing the announce's own page on the
+        marketplace.
+
+        The announce may have an announce_id, set earlier by the backend.
+
+      parameters:
+        - in: body
+          name: body
+          description: A list of new announces to put in the scrape queue.
+          required: true
+          schema:
+            $ref: "#/definitions/NewAnnounces"
+
+      tags:
+        - Announces
+      produces:
+        - application/json
+      x-bind-server: bdl.api.announce.do_queue_up_announces
+      x-bind-client: queue_up_announces
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/Ok'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/announce/toparse:
+    get:
+      summary: Get a list of announce to parse.
+      description: |
+
+        Get a list of announces to parse one by one.
+
+      parameters:
+        - in: query
+          name: limit
+          type: number
+          description: Max number of announces to return (10 by default)
+          required: false
+
+      tags:
+        - Announces
+      produces:
+        - application/json
+      x-bind-server: bdl.api.announce.do_get_announces_to_parse
+      x-bind-client: get_announces_to_parse
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Announces to parse
+          schema:
+            $ref: '#/definitions/AnnouncesToParse'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/announce/tocheck:
+    get:
+      summary: Get a batch of announces to check if they are sold or not.
+      description: |
+
+        Get a list of announces for which to check if the item has been sold or
+        not.
+
+      parameters:
+        - in: query
+          name: limit
+          type: number
+          description: Max number of announces to return (10 by default)
+          required: false
+
+      tags:
+        - Announces
+      produces:
+        - application/json
+      x-bind-server: bdl.api.announce.do_get_announces_to_check
+      x-bind-client: get_announces_to_check
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/Ok'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+definitions:
+
+
+  ItemsForSale:
+    type: object
+    description: A list of items for sale.
+    properties:
+      query:
+        type: string
+        description: The keywords searched for
+      count_found:
+        type: number
+        description: Number of matches
+      url_this:
+        type: string
+        description: The url that returned this result
+      url_next:
+        type: string
+        description: Url to get the next result set
+      htmls:
+        type: array
+        description: HTML blocks representing items to be inserted in search page
+        items:
+          type: string
+      items:
+        type: array
+        description: Items for sale
+        items:
+            $ref: "#/definitions/Item"
+
+
+  Item:
+    type: object
+    description: An item for sale.
+    properties:
+      item_id:
+        type: string
+        description: Unique Item ID.
+      index:
+        type: string
+        description: Which index that item belongs to.
+        enum:
+          - BDL
+      title:
+        type: string
+        description: Item title.
+      description:
+        type: string
+        description: Main description of the item.
+      country:
+        type: string
+        format: country_code
+        description: Country where this item is/was sold.
+      location:
+        type: string
+        description: (Optional) Where in the country the item is located.
+      price:
+        type: number
+        format: amount
+        description: Price asked for this item.
+      price_is_fixed:
+        type: boolean
+        description: True if item has a fixed price, false if is an auction
+      currency:
+        type: string
+        format: currency
+        description: The currency of all item prices.
+      real:
+        type: boolean
+        description: True if this data is real, false if not (test or mocked data). False by default.
+      source:
+        type: string
+        description: Where did this item originate?
+        enum:
+          - FACEBOOK
+          - BLOCKET
+          - EBAY
+          - TRADERA
+          - LEBONCOIN
+          - CITYBOARD
+          - SHPOCK
+          - TEST
+      native_url:
+        type: string
+        description: URL to the original item announce on the scraped marketplace, unique for this item.
+      picture_url:
+        type: string
+        description: Original url of the item's main picture with the highest possible resolution.
+      picture_url_w400:
+        type: string
+        description: Public facing url to get the item picture with width 400px.
+      picture_url_w600:
+        type: string
+        description: Public facing url to get the item picture with width 600px.
+      count_views:
+        type: number
+        description: Number of times this item was individually retrieved.
+      display_priority:
+        type: number
+        description: A numeric grade of how good looking the annouce is - Higher grades should be displayed first in frontend.
+      tags:
+        type: array
+        description: An array of string tags applied to that item
+        items:
+          type: string
+      is_sold:
+        type: boolean
+        description: Whether this item is sold or not.
+      price_sold:
+        type: number
+        format: amount
+        description: (Optional) Price paid for this item, if it is sold and a price was available.
+      date_sold:
+        type: string
+        format: yyyy_mm_dd
+        description: (Optional) Date at which this item was marked as sold.
+      title_description:
+        type: string
+        description: (ES only) Concatenated title and description, set when stored in ES
+      date_created:
+        type: string
+        format: yyyy_mm_dd
+        description: Date at which this item was listed on bazardelux.
+      epoch_created:
+        type: number
+        description: Epoch at which this item was listed on bazardelux.
+      date_last_check:
+        type: string
+        format: yyyy_mm_dd
+        description: Date at which we last checked if this item is still for sale.
+      epoch_last_check:
+        type: number
+        description: Epoch at which we last checked if this item is still for sale.
+      native_doc_id:
+        type: string
+        description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
+      native_seller_id:
+        type: string
+        description: (Optional) The seller ID of the original announce in its marketplace (Facebook owner ID)
+      native_seller_name:
+        type: string
+        description: (Optional) The seller name.
+      native_seller_is_shop:
+        type: boolean
+        description: (Optional) True if the owner is a shop, false if is a private person.
+      native_group_id:
+        type: string
+        description: (Optional) ID of facebook group where this item is.
+      native_location:
+        type: string
+        description: (Optional) Item location as presented on the original marketplace.
+      native_external_url:
+        type: string
+        description: (Optional) Link to original announce (outside Facebook, for example)
+    required:
+      - item_id
+      - title
+      - description
+      - country
+      - price
+      - currency
+      - origin_url
+      - picture_url
+
+
+  ArchiveReason:
+    type: object
+    description: Why is this item being archived?
+    properties:
+      reason:
+        type: string
+        description: Reason why the item is being archived
+        enum:
+          - SOLD
+          - ADMIN
+      price_sold:
+        type: number
+        format: amount
+        description: (Optional) Price paid for this item, if it is sold and a price was available.
+
+
+  NewAnnounces:
+    type: object
+    description: One of more announces for preliminary screening.
+    properties:
+      index:
+        type: string
+        description: Which index to store those items in.
+        enum:
+          - BDL
+      source:
+        type: string
+        description: Where are these announces from?
+        enum:
+          - FACEBOOK
+          - BLOCKET
+          - EBAY
+          - TRADERA
+          - LEBONCOIN
+          - CITYBOARD
+          - SHPOCK
+          - TEST
+      real:
+        type: boolean
+        description: True if those announces are real (default), false if not (test data).
+      announces:
+        type: array
+        description: A list of announces.
+        items:
+          $ref: '#/definitions/Announce'
+
+
+  Announce:
+    type: object
+    description: Announce data scraped from the marketplace''s announce wall.
+    properties:
+      title:
+        type: string
+        description: Item title.
+      description:
+        type: string
+        description: (Optional) Main description of the item.
+      country:
+        type: string
+        format: country_code
+        description: Country where this item is/was sold.
+      location:
+        type: string
+        description: (Optional) Where in the country the item is located.
+      price:
+        type: number
+        format: amount
+        description: Price asked for this item.
+      currency:
+        type: string
+        format: currency
+        description: The currency of all item prices.
+      scraper_data:
+        type: string
+        description: Extra data provided by the scraper The scraper/marketplace to use for scraping.
+
+
+  AnnouncesToParse:
+    type: object
+    description: A list of announces to parse.
+    properties:
+      announces:
+        type: array
+        description: A list of announces to parse.
+        items:
+          $ref: '#/definitions/Announce'
+
+
+  AnnounceToParse:
+    type: object
+    description: One announce to parse.
+    properties:
+      source:
+        type: string
+        description: The scraper/marketplace to use for scraping.
+      scraper_data:
+        type: object
+        description: Extra data provided by the scraper for scraping this announce, specific.
+        $ref: '#/definitions/ScraperData'
+      announce_url:
+        type: string
+        description: URL of the announce page on the source marketplace.
+
+
+  ScraperData:
+    type: object
+    description: Optional data needed by the scraper to access this announce.
+    additionalProperties: true
+
+
+  #
+  # OK / ERROR
+  #
+
+  Ok:
+    type: object
+    description: An empty all-went-well reply
+    properties:
+      ok:
+        type: string
+
+
+  Error:
+    type: object
+    description: An api error
+    properties:
+      status:
+        type: integer
+        format: int32
+        description: HTTP error code.
+      error:
+        type: string
+        description: A unique identifier for this error.
+      error_description:
+        type: string
+        description: A humanly readable error message in the user''s selected language.
+      error_id:
+        type: string
+        description: Unique error id for querying error trace and analytics data
+      error_caught:
+        type: string
+        description: The internal error that was caught (if any)
+      user_message:
+        type: string
+        description: A user-friendly error message, in the user's language, to be shown in the app's alert.
+    required:
+      - status
+      - error
+      - error_description
+    example:
+      status: 500
+      error: SERVER_ERROR
+      error_description: Expected data to send in reply but got none
+      user_message: Something went wrong! Try again later.
