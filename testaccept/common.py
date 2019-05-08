@@ -50,7 +50,7 @@ class BDLTests(PyMacaronTestCase):
         self.assertIsItem(j)
 
 
-    def assertIsItem(self, j):
+    def assertIsItem(self, j, is_sold=False):
         required = [
             'item_id', 'index', 'title', 'description', 'country', 'price',
             'price_is_fixed', 'currency', 'native_url', 'real',
@@ -61,5 +61,13 @@ class BDLTests(PyMacaronTestCase):
             'tags',
             'picture_url', 'picture_url_w400', 'picture_url_w600',
         ]
+
         for k in required:
             self.assertTrue(k in j, "Item has no attribute %s" % k)
+
+        if is_sold:
+            self.assertEqual(j['is_sold'], True)
+            self.assertTrue(j['date_sold'])
+        else:
+            self.assertEqual(j['is_sold'], False)
+            self.assertTrue('date_sold' not in j)

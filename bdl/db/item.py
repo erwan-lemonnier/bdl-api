@@ -7,7 +7,7 @@ from pymacaron_dynamodb import PersistentSwaggerObject, DynamoDBItemNotFound
 log = logging.getLogger(__name__)
 
 
-def store_item(item, index, async):
+def store_item(item):
     # REMOVE
     import json
     from pymacaron_core.swagger.apipool import ApiPool
@@ -16,7 +16,9 @@ def store_item(item, index, async):
 
     # Duh. Dynamodb does not like floats...
     price = item.price
-    price_sold = item.price_sold
+    price_sold = None
+    if hasattr(item, 'price_sold'):
+        price_sold = item.price_sold
 
     if price:
         item.price = str(price)
@@ -26,10 +28,8 @@ def store_item(item, index, async):
     PersistentSwaggerObject.save_to_db(item)
 
     item.price = price
-    item.price_sold = price_sold
-
-    if index:
-        item.index_to_es(async=async)
+    if price_sold:
+        item.price_sold = price_sold
 
 
 class PersistentItem(PersistentSwaggerObject):
@@ -40,18 +40,20 @@ class PersistentItem(PersistentSwaggerObject):
 
     def save_to_db(item, index=True, async=True):
         log.info("Storing item %s" % item.item_id)
-        store_item(item, index, async)
+        store_item(item)
+        if index:
+            item.index_to_es(async=async)
 
 
 class PersistentArchivedItem(PersistentSwaggerObject):
     api_name = 'bdl'
-    model_name = 'Item'
+    model_name = 'ArchivedItem'
     table_name = 'items-archived'
     primary_key = 'item_id'
 
     def save_to_db(item, index=True, async=True):
         log.info("Storing archived item %s" % item.item_id)
-        store_item(item, index, async)
+        store_item(item)
 
 
 def item_exists(item_id):
@@ -65,17 +67,21 @@ def item_exists(item_id):
 
 def get_item(item_id):
     """Retrieve an item from the item table, or the archive"""
+    log.debug("Looking up item %s in items forsale" % item_id)
     try:
-        log.debug("Looking up item %s in items forsale" % item_id)
         p = PersistentItem.load_from_db(item_id)
         model_to_item(p)
         return p
     except DynamoDBItemNotFound:
-        try:
-            log.debug("Looking up item %s in item archive" % item_id)
-            p = PersistentArchivedItem.load_from_db(item_id)
-            model_to_item(p)
-            return p
-        except DynamoDBItemNotFound:
-            log.debug("Item %s not found in Dynamodb" % item_id)
-            raise ItemNotFoundError(item_id)
+        pass
+    except Exception as e:
+        raise e
+
+    log.debug("Looking up item %s in item archive" % item_id)
+    try:
+        p = PersistentArchivedItem.load_from_db(item_id)
+        model_to_item(p)
+        return p
+    except DynamoDBItemNotFound:
+        log.debug("Item %s not found in Dynamodb" % item_id)
+        raise ItemNotFoundError(item_id)

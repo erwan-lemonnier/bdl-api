@@ -3,7 +3,8 @@ import json
 from uuid import uuid4
 from pymacaron_core.swagger.apipool import ApiPool
 from pymacaron.utils import to_epoch, timenow
-from bdl.db.elasticsearch import es_index_doc_async, es_index_doc
+from pymacaron_dynamodb import get_dynamodb
+from bdl.db.elasticsearch import es_index_doc_async, es_index_doc, es_delete_doc
 from bdl.utils import mixin
 
 
@@ -13,7 +14,6 @@ log = logging.getLogger(__name__)
 def model_to_item(o):
     """Take a bravado object and return a UserProfile"""
     mixin(o, Item, IndexableItem)
-
 
 class Item():
 
@@ -50,6 +50,30 @@ class Item():
     def set_display_priority(self):
         # TODO
         self.display_priority = 1
+
+
+    def archive(self):
+        """Move this item from the items table into the items-archived table, and remove
+        it from elasticsearch"""
+        assert self.is_sold, "Only sold items may be archived"
+
+        log.debug("Archiving item %s (%s)" % (self.item_id, self.slug))
+
+        itemsold = ApiPool.bdl.model.ArchivedItem(
+            **ApiPool.bdl.model_to_json(self)
+        )
+        itemsold.save_to_db()
+
+        # Remove from dynamodb
+        table = get_dynamodb().Table('items')
+        table.delete_item(Key={'item_id': self.item_id})
+
+        # And remove from elasticsearch
+        es_delete_doc(
+            self.get_es_index(),
+            self.get_es_doc_type(),
+            self.item_id,
+        )
 
 
 class IndexableItem():
@@ -115,6 +139,7 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
     item.date_created = now
     item.date_last_check = now
     item.count_views = 0
+    item.is_sold = False
 
     # Make totally sure test items don't make it into live indexes
     if item.source == 'TEST':

@@ -404,6 +404,24 @@ definitions:
     description: An item for sale.
     x-persist: bdl.db.item.PersistentArchivedItem
     additionalProperties: true
+    properties:
+      item_id:
+        type: string
+        description: Unique Item ID.
+      count_views:
+        type: integer
+        description: Number of times this item was individually retrieved.
+      display_priority:
+        type: integer
+        description: A numeric grade of how good looking the annouce is - Higher grades should be displayed first in frontend.
+      price:
+        type: number
+        format: amount
+        description: Price asked for this item.
+      price_sold:
+        type: number
+        format: amount
+        description: (Optional) Price paid for this item, if it is sold and a price was available.
 
 
   Item:
@@ -486,7 +504,7 @@ definitions:
           type: string
       is_sold:
         type: boolean
-        description: Whether this item is sold or not.
+        description: Whether this item is still for sale or not.
       price_sold:
         type: number
         format: amount
@@ -552,7 +570,6 @@ definitions:
         description: Reason why the item is being archived
         enum:
           - SOLD
-          - ADMIN
       price_sold:
         type: number
         format: amount

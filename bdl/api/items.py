@@ -1,5 +1,6 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
+from pymacaron.utils import timenow
 from bdl.model.item import create_item
 from bdl.db.item import get_item
 
@@ -29,12 +30,19 @@ def do_get_item(item_id):
     return item
 
 
-def do_archive_item(item_id, data):
+def do_archive_item(data, item_id=None):
 
-    # Get item
-    # Set sold_price, sold_date and is_sold if reason==SOLD
-    # Save and remove from index (async)
-    pass
+    item = get_item(item_id)
+
+    assert data.reason == 'SOLD', "Archiving reason is %s" % data.reason
+    item.is_sold = True
+    item.date_sold = timenow()
+    if data.price_sold:
+        item.price_sold = data.price_sold
+
+    item.archive()
+
+    return item
 
 
 def do_search_items_for_sale(query, page=0, real=None, country=None, domain=None):

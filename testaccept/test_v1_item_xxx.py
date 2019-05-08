@@ -22,23 +22,25 @@ class Tests(common.BDLTests):
     def test_v1_item_xxx(self):
         self.create_item(item_id=self.item_id1)
 
-        j = self.assertGetReturnJson(
+        j0 = self.assertGetReturnJson(
             'v1/item/%s' % self.item_id1,
             auth="Bearer %s" % self.token,
         )
+        self.assertIsItem(j0)
 
-        self.assertEqual(j['date_created'], j['date_last_check'])
+        self.assertEqual(j0['date_created'], j0['date_last_check'])
         self.assertEqual(
-            j,
+            j0,
             {
                 'count_views': 1,
                 'country': 'SE',
                 'currency': 'SEK',
-                'date_created': j['date_created'],
-                'date_last_check': j['date_last_check'],
+                'date_created': j0['date_created'],
+                'date_last_check': j0['date_last_check'],
                 'description': 'This i a test description',
                 'display_priority': 1,
                 'index': 'BDL',
+                'is_sold': False,
                 'item_id': 'test-0000001',
                 'native_url': 'bob',
                 'picture_url': 'bob',
@@ -56,9 +58,34 @@ class Tests(common.BDLTests):
         )
 
         # Get again and verify that count_view is increased
-        jj = self.assertGetReturnJson(
+        j1 = self.assertGetReturnJson(
             'v1/item/%s' % self.item_id1,
             auth="Bearer %s" % self.token,
         )
-        j['count_views'] = 2
-        self.assertEqual(jj, j)
+        self.assertIsItem(j1)
+
+        j0['count_views'] = 2
+        self.assertEqual(j1, j0)
+
+        # Now archive that item and check that we can still retrieve it
+        j2 = self.assertPostReturnJson(
+            'v1/item/%s/archive' % self.item_id1,
+            {
+                'reason': 'SOLD',
+            },
+            auth="Bearer %s" % self.token,
+        )
+        self.assertIsItem(j2, is_sold=True)
+        j0['is_sold'] = True
+        j0['date_sold'] = j2['date_sold']
+        self.assertEqual(j2, j0)
+
+        # We can still get it
+        j3 = self.assertGetReturnJson(
+            'v1/item/%s' % self.item_id1,
+            auth="Bearer %s" % self.token,
+        )
+        self.assertIsItem(j3, is_sold=True)
+
+        j0['count_views'] = 3
+        self.assertEqual(j3, j0)
