@@ -20,5 +20,4 @@ def check(file):
 
 def test_swagger_files():
     current_dir = os.path.dirname(os.path.realpath(__file__))
-    assert check(os.path.join(current_dir, "../apis/ksting.yaml")), 'ksting.yaml has errors'
-    assert check(os.path.join(current_dir, "../apis/admin.yaml")), 'admin.yaml has errors'
+    assert check(os.path.join(current_dir, "../apis/bdl.yaml")), 'bdl.yaml has errors'

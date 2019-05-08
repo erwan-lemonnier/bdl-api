@@ -1,11 +1,18 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
+from bdl.exceptions import IndexNotSupportedError
 
 
 log = logging.getLogger(__name__)
 
 
 def do_queue_up_announces(data):
+
+    if data.index and data.index != 'BDL':
+        raise IndexNotSupportedError(data.index)
+
+    if data.source == 'TEST':
+        data.real = False
 
     # Queue up new announces
     # If has too little data on announce:
@@ -22,7 +29,7 @@ def do_queue_up_announces(data):
     #     Drop announce
     #     Remove from SQS if has announce_id
 
-    pass
+    return ApiPool.bdl.model.Ok()
 
 
 def do_get_announces_to_parse(limit):

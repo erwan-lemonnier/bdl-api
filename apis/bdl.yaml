@@ -2,7 +2,7 @@
 
 swagger: '2.0'
 info:
-  title: Certificate API
+  title: Bazardelux API
   version: "0.0.1"
   description: |
 
@@ -67,7 +67,7 @@ produces:
   - application/json
 paths:
 
-  /v1/search/items:
+  /v1/search:
     get:
       summary: Search the database of items for sale.
       description:
@@ -111,7 +111,7 @@ paths:
         - Search
       produces:
         - application/json
-      x-bind-server: bdl.api.item.do_search_items_for_sale
+      x-bind-server: bdl.api.items.do_search_items_for_sale
       x-bind-client: search_items_for_sale
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
@@ -143,7 +143,7 @@ paths:
         - Items
       produces:
         - application/json
-      x-bind-server: bdl.api.item.do_get_item
+      x-bind-server: bdl.api.items.do_get_item
       x-bind-client: get_item
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
@@ -182,13 +182,13 @@ paths:
         - Items
       produces:
         - application/json
-      x-bind-server: bdl.api.item.do_archive_item
+      x-bind-server: bdl.api.items.do_archive_item
       x-bind-client: archive_item
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
       responses:
         '200':
-          description: ItemForSale
+          description: Item for sale
           schema:
             $ref: '#/definitions/Item'
         default:
@@ -197,7 +197,44 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/announce/queue:
+  /v1/item:
+    post:
+      summary: Register a new item (For testing only)
+      description: |
+
+        Register a test item. This endpoint is used only for automated testing.
+
+        The proper way to register real items is to submit parsed announces to
+        v1/announces/queue and let the BDL backend decide which one to index as
+        items or not.
+
+      parameters:
+        - in: body
+          name: body
+          description: Data describing a test item.
+          required: true
+          schema:
+            $ref: "#/definitions/Item"
+      tags:
+        - Items
+      produces:
+        - application/json
+      x-bind-server: bdl.api.items.do_create_test_item
+      x-bind-client: create_test_item
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Item for sale
+          schema:
+            $ref: '#/definitions/Item'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/announces/queue:
     post:
       summary: Submit one or more announces for curation.
       description: |
@@ -223,7 +260,7 @@ paths:
         - Announces
       produces:
         - application/json
-      x-bind-server: bdl.api.announce.do_queue_up_announces
+      x-bind-server: bdl.api.announces.do_queue_up_announces
       x-bind-client: queue_up_announces
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
@@ -238,7 +275,7 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/announce/toparse:
+  /v1/announces/toparse:
     get:
       summary: Get a list of announce to parse.
       description: |
@@ -256,7 +293,7 @@ paths:
         - Announces
       produces:
         - application/json
-      x-bind-server: bdl.api.announce.do_get_announces_to_parse
+      x-bind-server: bdl.api.announces.do_get_announces_to_parse
       x-bind-client: get_announces_to_parse
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
@@ -271,7 +308,7 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/announce/tocheck:
+  /v1/announces/tocheck:
     get:
       summary: Get a batch of announces to check if they are sold or not.
       description: |
@@ -290,8 +327,34 @@ paths:
         - Announces
       produces:
         - application/json
-      x-bind-server: bdl.api.announce.do_get_announces_to_check
+      x-bind-server: bdl.api.announces.do_get_announces_to_check
       x-bind-client: get_announces_to_check
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/Ok'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/sitemap/refresh:
+    get:
+      summary: Update the site''s sitemap.
+      description: |
+
+        Regenerate the sitemap of bazardelux.com.
+
+      tags:
+        - Sitemap
+      produces:
+        - application/json
+      x-bind-server: bdl.api.sitemap.do_generate_sitemap
+      x-bind-client: generate_sitemap
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
       responses:
@@ -336,9 +399,17 @@ definitions:
             $ref: "#/definitions/Item"
 
 
+  ArchivedItem:
+    type: object
+    description: An item for sale.
+    x-persist: bdl.db.item.PersistentArchivedItem
+    additionalProperties: true
+
+
   Item:
     type: object
     description: An item for sale.
+    x-persist: bdl.db.item.PersistentItem
     properties:
       item_id:
         type: string
@@ -375,6 +446,9 @@ definitions:
       real:
         type: boolean
         description: True if this data is real, false if not (test or mocked data). False by default.
+      slug:
+        type: string
+        description: Unique url slug for this item
       source:
         type: string
         description: Where did this item originate?
@@ -400,10 +474,10 @@ definitions:
         type: string
         description: Public facing url to get the item picture with width 600px.
       count_views:
-        type: number
+        type: integer
         description: Number of times this item was individually retrieved.
       display_priority:
-        type: number
+        type: integer
         description: A numeric grade of how good looking the annouce is - Higher grades should be displayed first in frontend.
       tags:
         type: array
@@ -419,25 +493,19 @@ definitions:
         description: (Optional) Price paid for this item, if it is sold and a price was available.
       date_sold:
         type: string
-        format: yyyy_mm_dd
+        format: date-time
         description: (Optional) Date at which this item was marked as sold.
-      title_description:
+      searchable_string:
         type: string
         description: (ES only) Concatenated title and description, set when stored in ES
       date_created:
         type: string
-        format: yyyy_mm_dd
+        format: date-time
         description: Date at which this item was listed on bazardelux.
-      epoch_created:
-        type: number
-        description: Epoch at which this item was listed on bazardelux.
       date_last_check:
         type: string
-        format: yyyy_mm_dd
+        format: date-time
         description: Date at which we last checked if this item is still for sale.
-      epoch_last_check:
-        type: number
-        description: Epoch at which we last checked if this item is still for sale.
       native_doc_id:
         type: string
         description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
@@ -461,12 +529,17 @@ definitions:
         description: (Optional) Link to original announce (outside Facebook, for example)
     required:
       - item_id
+      - index
+      - slug
       - title
       - description
       - country
       - price
+      - price_is_fixed
+      - real
+      - source
       - currency
-      - origin_url
+      - native_url
       - picture_url
 
 
@@ -515,7 +588,9 @@ definitions:
         description: A list of announces.
         items:
           $ref: '#/definitions/Announce'
-
+    required:
+      - source
+      - announces
 
   Announce:
     type: object
