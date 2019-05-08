@@ -74,3 +74,33 @@ class Tests(common.BDLTests):
 
         j['count_views'] = j['count_views'] + 1
         self.assertEqual(jj, j)
+
+
+    def test_v1_item_xxx_archive__with_price(self):
+        self.cleanup()
+
+        j0 = self.create_item(item_id=self.item_id1)
+
+        # Now archive that item and check that we can still retrieve it
+        j1 = self.assertPostReturnJson(
+            'v1/item/%s/archive' % self.item_id1,
+            {
+                'reason': 'SOLD',
+                'price_sold': 300,
+            },
+            auth="Bearer %s" % self.token,
+        )
+        self.assertIsItem(j1, is_sold=True)
+
+        # We can still get it
+        j2 = self.assertGetReturnJson(
+            'v1/item/%s' % self.item_id1,
+            auth="Bearer %s" % self.token,
+        )
+        self.assertIsItem(j2, is_sold=True)
+
+        j0['count_views'] = j0['count_views'] + 1
+        j0['is_sold'] = True
+        j0['date_sold'] = j2['date_sold']
+        j0['price_sold'] = 300
+        self.assertEqual(j2, j0)

@@ -74,6 +74,7 @@ class BDLTests(PyMacaronTestCase):
             auth="Bearer %s" % self.token,
         )
         self.assertIsItem(j)
+        return j
 
 
     def assertIsItem(self, j, is_sold=False):
