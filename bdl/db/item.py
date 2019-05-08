@@ -7,18 +7,29 @@ from pymacaron_dynamodb import PersistentSwaggerObject, DynamoDBItemNotFound
 log = logging.getLogger(__name__)
 
 
-# Duh. Dynamodb does not like floats...
-def numbers_to_strings(item):
-    if item.price:
-        item.price = str(item.price)
-    if item.price_sold:
-        item.price_sold = str(item.price_sold)
+def store_item(item, index, async):
+    # REMOVE
+    import json
+    from pymacaron_core.swagger.apipool import ApiPool
+    log.debug("Storing to DB: %s" % json.dumps(ApiPool.bdl.model_to_json(item), indent=4))
+    # REMOVE
 
-def strings_to_numbers(item):
-    if item.price:
-        item.price = float(item.price)
-    if item.price_sold:
-        item.price_sold = float(item.price_sold)
+    # Duh. Dynamodb does not like floats...
+    price = item.price
+    price_sold = item.price_sold
+
+    if price:
+        item.price = str(price)
+    if price_sold:
+        item.price_sold = str(price_sold)
+
+    PersistentSwaggerObject.save_to_db(item)
+
+    item.price = price
+    item.price_sold = price_sold
+
+    if index:
+        item.index_to_es(async=async)
 
 
 class PersistentItem(PersistentSwaggerObject):
@@ -29,16 +40,7 @@ class PersistentItem(PersistentSwaggerObject):
 
     def save_to_db(item, index=True, async=True):
         log.info("Storing item %s" % item.item_id)
-        # REMOVE
-        import json
-        from pymacaron_core.swagger.apipool import ApiPool
-        log.debug("Storing to DB: %s" % json.dumps(ApiPool.bdl.model_to_json(item), indent=4))
-        # REMOVE
-        numbers_to_strings(item)
-        PersistentSwaggerObject.save_to_db(item)
-        strings_to_numbers(item)
-        if index:
-            item.index_to_es(async=async)
+        store_item(item, index, async)
 
 
 class PersistentArchivedItem(PersistentSwaggerObject):
@@ -48,12 +50,8 @@ class PersistentArchivedItem(PersistentSwaggerObject):
     primary_key = 'item_id'
 
     def save_to_db(item, index=True, async=True):
-        log.info("Storing item %s" % item.item_id)
-        numbers_to_strings(item)
-        PersistentSwaggerObject.save_to_db(item)
-        strings_to_numbers(item)
-        if index:
-            item.index_to_es(async=async)
+        log.info("Storing archived item %s" % item.item_id)
+        store_item(item, index, async)
 
 
 def item_exists(item_id):
