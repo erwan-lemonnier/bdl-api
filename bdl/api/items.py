@@ -32,9 +32,9 @@ def do_get_item(item_id):
 
 def do_archive_item(data, item_id=None):
 
-    item = get_item(item_id)
-
     assert data.reason == 'SOLD', "Archiving reason is %s" % data.reason
+
+    item = get_item(item_id)
     item.is_sold = True
     item.date_sold = timenow()
     if data.price_sold:

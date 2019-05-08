@@ -574,6 +574,8 @@ definitions:
         type: number
         format: amount
         description: (Optional) Price paid for this item, if it is sold and a price was available.
+    required:
+      - reason
 
 
   NewAnnounces:

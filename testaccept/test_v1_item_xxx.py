@@ -20,6 +20,7 @@ class Tests(common.BDLTests):
 
 
     def test_v1_item_xxx(self):
+        self.cleanup()
         self.create_item(item_id=self.item_id1)
 
         j0 = self.assertGetReturnJson(
