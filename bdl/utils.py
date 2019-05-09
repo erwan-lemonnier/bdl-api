@@ -1,6 +1,8 @@
 import logging
 import types
+import re
 from pymacaron.auth import generate_token
+from html.parser import HTMLParser
 
 
 log = logging.getLogger(__name__)
@@ -35,3 +37,21 @@ def gen_jwt_token(type='www', scrapper=None, language='en'):
         # Expire in 3 days
         expire_in=259200,
     )
+
+
+htmlparser = HTMLParser()
+
+def html_to_unicode(s):
+    """Take an html-encoded string and return a unicode string"""
+    return htmlparser.unescape(s)
+
+
+def cleanup_string(s):
+    s = s.lower()
+    s = re.sub('<[^<]+?>', ' ', s)
+    s = html_to_unicode(s)
+    s = re.sub(r'[;,*_=+\!\'\"\#\?\´\´\\\/\^\(\)\&\@\|\[\]\{\}\%]', ' ', s)
+    s = s.replace('\n', ' ').replace('\r', '')
+    s = re.sub(r'\s+', ' ', s)
+    s = s.strip()
+    return s

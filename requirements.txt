@@ -7,6 +7,7 @@ Babel==2.3.4
 Flask-Compress==1.4.0
 requests-aws4auth==0.9
 Unidecode==0.4.19
+boto
 boto3
 beautifulsoup4==4.5.1
 lxml==3.6.4

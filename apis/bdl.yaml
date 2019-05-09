@@ -234,24 +234,29 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/announces/queue:
+  /v1/announces/process:
     post:
       summary: Submit one or more announces for curation.
       description: |
 
         Submit a list of announces that may or may not make it into bazardelux.
 
-        The data in those announces may be quite minimal if they were extracted
-        from the wall listing on the scraped site. But it can also be a more
-        complete data set obtained by parsing the announce's own page on the
-        marketplace.
+        Submitted announces should at least have the following attributes set:
+        is_complete, title, native_url, price, currency, country.
 
-        The announce may have an announce_id, set earlier by the backend.
+        Announces that are complete (is_complete is true) will be strongly
+        curated, and if they pass curation, will be added onto Bazardelux.
+
+        Announces that are incomplete pass through a lighter curation
+        filter. Those that pass get added to the scraper task queue and a
+        scraper will later on scrape the complete announce data from the given
+        native_url, and submit it again to this endpoint, this time with the
+        complete flag set to true.
 
       parameters:
         - in: body
           name: body
-          description: A list of new announces to put in the scrape queue.
+          description: A list of new announces to process.
           required: true
           schema:
             $ref: "#/definitions/NewAnnounces"
@@ -260,8 +265,8 @@ paths:
         - Announces
       produces:
         - application/json
-      x-bind-server: bdl.api.announces.do_queue_up_announces
-      x-bind-client: queue_up_announces
+      x-bind-server: bdl.api.announces.do_process_announces
+      x-bind-client: process_announces
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
       responses:
@@ -479,6 +484,9 @@ definitions:
           - CITYBOARD
           - SHPOCK
           - TEST
+      scraper_data:
+        type: string
+        description: (Optional) Extra data provided by the scraper The scraper/marketplace to use for scraping.
       native_url:
         type: string
         description: URL to the original item announce on the scraped marketplace, unique for this item.
@@ -545,6 +553,9 @@ definitions:
       native_external_url:
         type: string
         description: (Optional) Link to original announce (outside Facebook, for example)
+      native_picture_url:
+        type: string
+        description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
     required:
       - item_id
       - index
@@ -615,12 +626,19 @@ definitions:
     type: object
     description: Announce data scraped from the marketplace''s announce wall.
     properties:
+      is_complete:
+        type: boolean
+        description: True if all possible data has been extracted, False if some data can still be parsed.
       title:
         type: string
         description: Item title.
       description:
         type: string
         description: (Optional) Main description of the item.
+      language:
+        type: string
+        format: language
+        description: The language of this announce.
       country:
         type: string
         format: country_code
@@ -638,7 +656,41 @@ definitions:
         description: The currency of all item prices.
       scraper_data:
         type: string
-        description: Extra data provided by the scraper The scraper/marketplace to use for scraping.
+        description: (Optional) Extra data provided by the scraper The scraper/marketplace to use for scraping.
+      native_url:
+        type: string
+        description: URL to the original item announce on the scraped marketplace, unique for this item.
+      native_picture_url:
+        type: string
+        description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
+      native_doc_id:
+        type: string
+        description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
+      native_seller_id:
+        type: string
+        description: (Optional) The seller ID of the original announce in its marketplace (Facebook owner ID)
+      native_seller_name:
+        type: string
+        description: (Optional) The seller name.
+      native_seller_is_shop:
+        type: boolean
+        description: (Optional) True if the owner is a shop, false if is a private person.
+      native_group_id:
+        type: string
+        description: (Optional) ID of facebook group where this item is.
+      native_location:
+        type: string
+        description: (Optional) Item location as presented on the original marketplace.
+      native_external_url:
+        type: string
+        description: (Optional) Link to original announce (outside Facebook, for example)
+    required:
+      - is_complete
+      - title
+      - country
+      - price
+      - currency
+      - native_url
 
 
   AnnouncesToParse:
@@ -652,26 +704,28 @@ definitions:
           $ref: '#/definitions/Announce'
 
 
-  AnnounceToParse:
+  ScraperTask:
     type: object
-    description: One announce to parse.
+    description: A queued url to scrap
     properties:
       source:
         type: string
-        description: The scraper/marketplace to use for scraping.
-      scraper_data:
-        type: object
-        description: Extra data provided by the scraper for scraping this announce, specific.
-        $ref: '#/definitions/ScraperData'
-      announce_url:
+        description: The scraper to use for scraping.
+      name:
         type: string
-        description: URL of the announce page on the source marketplace.
-
-
-  ScraperData:
-    type: object
-    description: Optional data needed by the scraper to access this announce.
-    additionalProperties: true
+        description: A name for this announce.
+      native_url:
+        type: string
+        description: URL to the original item announce on the scraped marketplace, unique for this item.
+      native_doc_id:
+        type: string
+        description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
+      native_group_id:
+        type: string
+        description: (Optional) ID of facebook group where this item is.
+      scraper_data:
+        type: string
+        description: (Optional) Extra data provided by the scraper, as a json string.
 
 
   #

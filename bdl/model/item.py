@@ -1,11 +1,14 @@
 import logging
 import json
+import re
 from uuid import uuid4
 from pymacaron_core.swagger.apipool import ApiPool
 from pymacaron.utils import to_epoch, timenow
 from pymacaron_dynamodb import get_dynamodb
 from bdl.db.elasticsearch import es_index_doc_async, es_index_doc, es_delete_doc
 from bdl.utils import mixin
+from bdl.utils import cleanup_string
+from bdl.tagger import get_matching_tags
 
 
 log = logging.getLogger(__name__)
@@ -17,19 +20,45 @@ def model_to_item(o):
 
 class Item():
 
+    def get_text(self):
+        """Return all the text parts of this item, in one concatenated string"""
+        s = ''
+        if self.title:
+            s = s + ' %s ' % self.title
+        if self.description:
+            s = s + ' %s ' % self.description
+        return s
+
     def generate_id(self):
         """Find an item_id that is not already taken"""
+
+        assert self.source
+
+        source_to_prefix = {
+            'FACEBOOK': 'fb',
+            'BLOCKET': 'bl',
+            'EBAY': 'eb',
+            'TRADERA': 'tr',
+            'LEBONCOIN': 'lbc',
+            'CITYBOARD': 'ctb',
+            'SHPOCK': 'spk',
+            'TEST': 'tst',
+        }
+
+        log.debug("item source: %s" % self.source)
         from bdl.db.item import item_exists
         while not self.item_id:
-            item_id = '%s-%s' % (self.index.lower(), str(uuid4()).replace('-', '')[0:30])
-            log.debug("Generated item_id=%s" % item_id)
+            item_id = '%s-%s' % (
+                source_to_prefix[self.source],
+                str(uuid4()).replace('-', '')[0:10],
+            )
             if not item_exists(item_id):
+                log.debug("Generated item_id=%s" % item_id)
                 self.item_id = item_id
 
     def set_tags(self):
-        """Set the item's category tags"""
-        # TODO
-        self.tags = []
+        """Set the item's category tags, by matching the announce's text against keywords"""
+        self.tags = get_matching_tags(self.get_text())
 
     def set_slug(self):
         """Set the item's slug, which has to be unique"""
@@ -38,8 +67,28 @@ class Item():
 
     def generate_searchable_string(self):
         """Generate the searchable_string for this item"""
-        # TODO
-        self.searchable_string = "-"
+        assert self.item_id
+
+        l = [
+            cleanup_string(self.title) if self.title else '',
+            cleanup_string(self.description) if self.description else '',
+            'SOURCE_%s' % self.source,
+            cleanup_string(self.location) if self.location else '',
+            'COUNTRY_%s' % self.country,
+            'CURRENCY_%s' % self.currency,
+            'FIXED_PRICE' if self.price_is_fixed else '',
+            self.native_doc_id if self.native_doc_id else '',
+            self.native_seller_id if self.native_seller_id else '',
+            self.native_group_id if self.native_group_id else '',
+            self.item_id,
+        ]
+
+        for t in self.tags:
+            l.append(':%s:' % t)
+
+        s = ' '.join(l)
+        s = re.sub(r'\s+', ' ', s)
+        self.searchable_string = s
 
     def import_pictures(self):
         """Import the item's pictures and resize them"""
@@ -50,7 +99,6 @@ class Item():
     def set_display_priority(self):
         # TODO
         self.display_priority = 1
-
 
     def archive(self):
         """Move this item from the items table into the items-archived table, and remove
@@ -116,7 +164,7 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
 
     # Make sure this announce contains the minimum amount of data
     required = [
-        'title', 'description', 'country', 'price',
+        'title', 'description', 'country', 'price', 'language',
         'price_is_fixed', 'currency', 'native_url', 'picture_url',
     ]
     for k in required:
@@ -124,6 +172,11 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
 
     # Create a new item
     now = timenow()
+
+    # Cleanup some announce data that shouldn't be passed on to the item
+    for k in ('is_complete', ):
+        if k in announce_json:
+            del announce_json[k]
 
     item = ApiPool.bdl.model.Item(**announce_json)
     model_to_item(item)
@@ -147,6 +200,9 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
 
     item.set_tags()
     item.set_slug()
+
+    log.info("Created new Item %s (%s)" % (item.item_id, item.slug))
+
     item.generate_searchable_string()
     item.set_display_priority()
     item.import_pictures()

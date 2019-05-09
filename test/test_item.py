@@ -21,9 +21,26 @@ class Tests(TestCase):
 
 
     def test_generate_item_id(self):
-        item = ApiPool.bdl.model.Item(index='BDL')
-        model_to_item(item)
-        self.assertEqual(item.item_id, None)
-        item.generate_id()
-        self.assertTrue(item.item_id.startswith('bdl-'))
-        self.assertEqual(len(item.item_id), 34)
+        i = ApiPool.bdl.model.Item(
+            source='TEST',
+        )
+        model_to_item(i)
+        self.assertEqual(i.item_id, None)
+        i.generate_id()
+        self.assertTrue(i.item_id.startswith('tst-'))
+        self.assertEqual(len(i.item_id), 14)
+
+        i.item_id = None
+        i.source = 'BLOCKET'
+        i.generate_id()
+        self.assertTrue(i.item_id.startswith('bl-'))
+
+        i.item_id = None
+        i.source = 'TRADERA'
+        i.generate_id()
+        self.assertTrue(i.item_id.startswith('tr-'))
+
+        # item_id is not regenerated if already set
+        i.source = 'TEST'
+        i.generate_id()
+        self.assertFalse(i.item_id.startswith('tst-'))

@@ -1,4 +1,5 @@
 import logging
+from boto3.dynamodb.conditions import Key
 from bdl.model.item import model_to_item
 from bdl.exceptions import ItemNotFoundError
 from pymacaron_dynamodb import PersistentSwaggerObject, DynamoDBItemNotFound
@@ -85,3 +86,29 @@ def get_item(item_id):
     except DynamoDBItemNotFound:
         log.debug("Item %s not found in Dynamodb" % item_id)
         raise ItemNotFoundError(item_id)
+
+
+def get_item_by_native_url(native_url):
+    """Retrieve an item from the item table, or the archive"""
+
+    # Try the Item table first
+    dbitems = PersistentItem.get_table().query(
+        IndexName='native_url-index',
+        KeyConditionExpression=Key('native_url').eq(native_url)
+    )
+
+    assert dbitems['Count'] <= 1, "Found more than 1 Item with native_url: '%s'" % native_url
+    if dbitems['Count'] == 1:
+        return PersistentItem.to_model(dbitems['Items'][0])
+
+    # Then the ArchivedItem table
+    dbitems = PersistentArchivedItem.get_table().query(
+        IndexName='native_url-index',
+        KeyConditionExpression=Key('native_url').eq(native_url)
+    )
+
+    assert dbitems['Count'] <= 1, "Found more than 1 ArchivedItem with native_url: '%s'" % native_url
+    if dbitems['Count'] == 1:
+        return PersistentArchivedItem.to_model(dbitems['Items'][0])
+
+    return None
