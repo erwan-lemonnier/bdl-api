@@ -9,6 +9,7 @@ from bdl.db.elasticsearch import es_index_doc_async, es_index_doc, es_delete_doc
 from bdl.utils import mixin
 from bdl.utils import cleanup_string
 from bdl.tagger import get_matching_tags
+from bdl.categories import get_categories
 
 
 log = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ log = logging.getLogger(__name__)
 def model_to_item(o):
     """Take a bravado object and return a UserProfile"""
     mixin(o, Item, IndexableItem)
+
 
 class Item():
 
@@ -28,6 +30,7 @@ class Item():
         if self.description:
             s = s + ' %s ' % self.description
         return s
+
 
     def generate_id(self):
         """Find an item_id that is not already taken"""
@@ -56,14 +59,45 @@ class Item():
                 log.debug("Generated item_id=%s" % item_id)
                 self.item_id = item_id
 
-    def set_tags(self):
+
+    def set_tags(self, reset=False):
         """Set the item's category tags, by matching the announce's text against keywords"""
-        self.tags = get_matching_tags(self.get_text())
+        item_tags = []
+
+        if not reset:
+            item_tags = item_tags + self.tags
+
+        text = self.get_text()
+
+        # Find top categories that match this item
+        for cat in get_categories():
+            tags = cat.get_matching_words(text, self.language)
+            if len(tags) > 0:
+                item_tags = item_tags + tags + [cat.name.upper()]
+
+        # Find all tags/categories that match this item
+        tags = get_matching_tags(text)
+        if len(tags) > 0:
+            item_tags = item_tags + tags
+
+        self.tags = sorted(set(item_tags))
+
+        log.info("Tagging item with %s" % self.tags)
+
+
+    def set_picture_tags(self):
+        """Use Amazon rekognition to identify the main objects in the picture, and
+        store them as picture tags
+        """
+        # TODO: set picture tags
+        self.picture_tags = []
+
 
     def set_slug(self):
         """Set the item's slug, which has to be unique"""
-        # TODO
+        # TODO: set slug
         self.slug = "-"
+
 
     def generate_searchable_string(self):
         """Generate the searchable_string for this item"""
@@ -84,11 +118,12 @@ class Item():
         ]
 
         for t in self.tags:
-            l.append(':%s:' % t)
+            l.append(':%s:' % t.upper())
 
         s = ' '.join(l)
         s = re.sub(r'\s+', ' ', s)
         self.searchable_string = s
+
 
     def import_pictures(self):
         """Import the item's pictures and resize them"""
@@ -96,9 +131,11 @@ class Item():
         self.picture_url_w400 = self.picture_url
         self.picture_url_w600 = self.picture_url
 
+
     def set_display_priority(self):
-        # TODO
+        # TODO: call rekognition on the picture, and the fewer categories, the higher the score
         self.display_priority = 1
+
 
     def archive(self):
         """Move this item from the items table into the items-archived table, and remove
@@ -206,6 +243,7 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
     item.generate_searchable_string()
     item.set_display_priority()
     item.import_pictures()
+    item.set_picture_tags()
 
     item.save_to_db(async=False)
 

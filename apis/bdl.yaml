@@ -510,6 +510,11 @@ definitions:
         description: An array of string tags applied to that item
         items:
           type: string
+      picture_tags:
+        type: array
+        description: An array of string tags applied to that item''s picture
+        items:
+          type: string
       is_sold:
         type: boolean
         description: Whether this item is still for sale or not.

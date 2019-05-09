@@ -27,9 +27,8 @@ class Keyword:
         self.language = None
         self.word = word
 
-        if ':' in word:
-            assert len(word.split(':')) == 1, "word %s should contain only one :" % word
-            language, word = word.split(':')
+        if re.match("^[a-z]{2}:", word):
+            language, word = word.split(':', 1)
             self.language = language
             self.word = word
 
@@ -37,12 +36,16 @@ class Keyword:
         """Check if this text matches with this keyword"""
         assert text
         assert language
+        log.debug("Matching [%s]/[%s] against %s" % (language, text, self))
 
         if self.language and self.language != language:
             return False
 
         # Match words exactly
-        return " %s " % self.word in text
+        return " %s " % self.word in ' %s ' % text
+
+    def __str__(self):
+        return '%s[%s]' % (self.word, self.language if self.language else '')
 
 
 class Node:
@@ -160,7 +163,7 @@ class Tree:
             if not filename.endswith(".html"):
                 continue
 
-            log.debug("Loading tags from %s" % filename)
+            # log.debug("Loading tags from %s" % filename)
 
             s = open(DIR_TAGS + '/' + filename).read()
 
@@ -243,13 +246,6 @@ tree.load()
 def get_tree():
     global tree
     return tree
-
-
-def reload_tree():
-    global tree
-    log.info("Reloading tagger configs!")
-    tree.load()
-
 
 def get_matching_tags(text):
     """Find all the tags and paths that apply to this text"""

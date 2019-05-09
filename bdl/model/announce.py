@@ -1,8 +1,7 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
 from bdl.utils import mixin
-from bdl.curator import match_list
-from bdl.categories import get_categories
+from bdl.categories import get_categories, SOLD, BLACKLIST_ALL
 from bdl.io.sqs import send_message
 from bdl.io.comprehend import identify_language
 
@@ -76,7 +75,7 @@ class Announce():
         if price_ranges:
             assert type(price_ranges) is list
             for o in price_ranges:
-                minmax[o.currency] = [o.price_min, o.price_max]
+                minmax[o.currency.upper()] = [o.price_min, o.price_max]
 
         if self.currency not in minmax:
             raise Exception("Curator has no price interval defined for currency %s (announce: %s)" % (self.currency, self))
@@ -98,7 +97,7 @@ class Announce():
 
     def seems_sold(self):
         """Check whether it says in the announce that the item is sold already"""
-        return match_list(self.text_content, 'sold.html')
+        return SOLD.match(self.text_content(), self.language)
 
 
     def pass_curator(self, ignore_whitelist=False, skip_sold=True):
@@ -106,23 +105,24 @@ class Announce():
 
         log.info("Curating '%s'" % self.title)
 
+        text = self.text_content()
+
         if skip_sold and self.seems_sold():
+            return False
+
+        if BLACKLIST_ALL.match(text, self.language):
+            log.debug("Announce fails global blacklist check")
             return False
 
         for cat in get_categories():
             # cat has attributes whitelist, blacklist, prices and name
-            text = self.text_content()
-
             if not self.has_ok_price(price_ranges=cat.prices):
                 log.debug("Announce fails price check on category %s" % cat.name)
                 continue
-            elif match_list(text, cat.blacklist):
+            elif cat.blacklist.match(text, self.language):
                 log.debug("Announce fails blacklist check on category %s" % cat.name)
                 continue
-            elif match_list(text, 'all-blacklist.html'):
-                log.debug("Announce fails global blacklist check on category %s" % cat.name)
-                continue
-            elif not ignore_whitelist and not match_list(text, cat.whitelist):
+            elif not ignore_whitelist and not cat.whitelist.match(text, self.language):
                 log.debug("Announce fails whitelist check on category %s" % cat.name)
                 continue
 
