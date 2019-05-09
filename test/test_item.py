@@ -21,10 +21,10 @@ class Tests(TestCase):
 
 
     def test_generate_item_id(self):
-        i = ApiPool.bdl.model.Item(
-            source='TEST',
-        )
+        i = ApiPool.bdl.model.Item()
         model_to_item(i)
+
+        i.source = 'TEST'
         self.assertEqual(i.item_id, None)
         i.generate_id()
         self.assertTrue(i.item_id.startswith('tst-'))

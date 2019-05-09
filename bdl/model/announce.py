@@ -10,16 +10,17 @@ from bdl.io.comprehend import identify_language
 log = logging.getLogger(__name__)
 
 
+QUEUE_NAME = 'announces-to-parse'
+
+
 def model_to_announce(o):
     """Take a bravado object and return an Announce"""
-    mixin(o, Announce)
     if o.is_complete not in (True, False):
         o.is_complete = False
+    mixin(o, Announce)
 
 
 class Announce():
-
-    queue_name = 'announces-to-parse'
 
     def __str__(self):
         return '%s/%s (%s %s)' % (self.source, self.title, self.price, self.currency)
@@ -27,8 +28,7 @@ class Announce():
 
     def identify_language(self):
         """Use Amazon comprehend to identify the announce's language, prior to curation"""
-        if not self.language:
-            self.language = identify_language(self.text_content)
+        self.language = identify_language(self.text_content())
 
 
     def to_scraper_task(self):
@@ -46,15 +46,15 @@ class Announce():
         """Queue up this announce to be completely parsed later on"""
         log.info("Queuing up announce '%s' for deep scraping" % str(self))
         send_message(
-            self.queue_name,
+            QUEUE_NAME,
             ApiPool.bdl.model_to_json(self.to_scraper_task()),
         )
 
-    #----------------------------------------
+    # ----------------------------------------
     #
     #   Curation rules
     #
-    #----------------------------------------
+    # ----------------------------------------
 
     def text_content(self):
         s = self.title
