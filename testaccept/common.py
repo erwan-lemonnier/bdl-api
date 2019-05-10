@@ -55,42 +55,65 @@ class BDLTests(PyMacaronTestCase):
                     )
 
 
-    def create_item(self, native_url=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
-        if not native_url:
-            native_url = self.native_test_url1
+    def _call_announce_process(self, *announces):
+        """Post one or more announces for processing"""
         self.assertPostReturnOk(
             'v1/announces/process',
             {
                 'index': 'BDL',
                 'source': 'TEST',
                 'real': False,
-                'announces': [
-                    {
-                        'is_complete': True,
-                        'is_sold': False,
-                        'language': 'en',
-                        'index': 'BDL',
-                        'real': False,
-                        'source': 'TEST',
-                        'title': 'This is a test title',
-                        'description': 'A nice louis vuitton bag',
-                        'country': country,
-                        'price': price,
-                        'currency': currency,
-                        'price_is_fixed': price_is_fixed,
-                        'native_url': native_url,
-                        'native_picture_url': 'bob',
-                    },
-                ],
+                'announces': announces,
             },
             auth="Bearer %s" % self.token,
         )
 
-        item = get_item_by_native_url(self.native_test_url1)
-        j = ApiPool.bdl.model_to_json(item)
+
+    def process_sold_announce(self, native_url=None, price=1000, currency='SEK'):
+        """Post one sold announce with the given native_url"""
+        if not native_url:
+            native_url = self.native_test_url1
+        self._call_announce_process({
+            'is_sold': True,
+            'native_url': native_url,
+        })
+
+
+    def create_item(self, native_url=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
+        if not native_url:
+            native_url = self.native_test_url1
+        self._call_announce_process({
+            'is_complete': True,
+            'is_sold': False,
+            'language': 'en',
+            'index': 'BDL',
+            'real': False,
+            'source': 'TEST',
+            'title': 'This is a test title',
+            'description': 'A nice louis vuitton bag',
+            'country': country,
+            'price': price,
+            'currency': currency,
+            'price_is_fixed': price_is_fixed,
+            'native_url': native_url,
+            'native_picture_url': 'bob',
+        })
+
+        j = self.get_item(native_url=native_url)
         log.debug("Created item: %s" % json.dumps(j, indent=4))
         self.assertIsItem(j)
         return j
+
+
+    def get_item(self, native_url=None):
+        """Return an item as json, given its native_url. Or None"""
+        if native_url:
+            item = get_item_by_native_url(native_url)
+            if not item:
+                return None
+            return ApiPool.bdl.model_to_json(item)
+        else:
+            assert 0, 'Not implemented'
 
 
     def assertIsItem(self, j, is_sold=False):

@@ -19,16 +19,21 @@ def do_process_announces(data):
         data.real = False
 
     for a in data.announces:
-        model_to_announce(a)
 
         # Make sure all required announce attributes are set
         assert a.native_url, "Announce native_url is not set"
         assert a.is_sold in (True, False), "Announce is_complete is not set (%s)" % a.native_url
-        assert a.is_complete in (True, False), "Announce is_complete is not set (%s)" % a.native_url
         if not a.is_sold:
+            log.debug("----> is_complete: %s" % a.is_complete)
+            assert a.is_complete in (True, False), "Announce is_complete is not set (%s)" % a.native_url
             assert a.title is not None, "Announce title is not set (%s)" % a.native_url
             assert a.price is not None, "Announce price is not set (%s)" % a.native_url
             assert a.currency, "Announce currency is not set (%s)" % a.native_url
+        if a.is_complete:
+            assert a.description is not None, "Announce description is not set"
+            assert a.native_picture_url, "Announce native_picture_url is not set"
+
+        model_to_announce(a)
 
         a.process(
             index=data.index,

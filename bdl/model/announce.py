@@ -159,58 +159,65 @@ class Announce():
         if self.is_sold:
             log.info("Announce is sold [%s]" % str(self))
             item = get_item_by_native_url(self.native_url)
+
             if not item:
                 log.info("There is NO item based on this announce - Ignoring it")
+                return
+
+            log.info("Found item %s based on this announce - Archiving it" % item.item_id)
+            item.is_sold = True
+            item.date_sold = timenow()
+            if hasattr(self, 'price_sold') and self.price_sold:
+                log.info("Setting item's price_sold: %s" % self.price_sold)
+                item.price_sold = self.price_sold
+            item.archive()
+            return
+
+        # If no language is specified, use amazon comprehend to identify the
+        # announce's language. We need the language to match against keyword
+        # lists
+        if not self.language:
+            self.identify_language()
+            log.info("Identified announce's language: %s [%s]" % (self.language, str(self)))
+
+        # If the announce is incompletely parsed, we may want to schedule it
+        # for complete parsing
+        if not self.is_complete:
+
+            # Let's decide if we queue it up for complete scraping, or if we
+            # just drop it
+
+            if not self.pass_curator(ignore_whitelist=True):
+                log.info("Announce failed 1st curation - Skipping it [%s]" % str(self))
+                return
             else:
-                log.info("Found item %s based on this announce - Archiving it" % item.item_id)
-                item.is_sold = True
-                item.date_sold = timenow()
-                if self.price_sold:
-                    log.info("Setting item's price_sold: %s" % self.price_sold)
-                    item.price_sold = self.price_sold
-                item.archive()
+                log.info("Announce passed 1st curation - Queuing it up [%s]" % str(self))
+                self.queue_up()
+                return
 
-        else:
-            # This announce is still for sale. Does it pass curation?
+        # This announce has all the data we can ever scraped. This is
+        # the real deal: is it going to pass thorough curation?
 
-            # If no language is specified, use amazon comprehend to identify the
-            # announce's language
-            if not self.language:
-                self.identify_language()
-                log.info("Identified announce's language: %s [%s]" % (self.language, str(self)))
+        if not self.pass_curator():
+            log.info("Announce failed deep curation - Skipping it [%s]" % str(self))
+            return
 
-            if not self.is_complete:
+        log.info("Announce passed deep curation [%s]" % str(self))
 
-                # Incomplete announce. Let's decide if we queue it up for complete scraping,
-                # or if we drop it already
+        # Is there already an item associated with this announce?
+        item = get_item_by_native_url(self.native_url)
+        if item:
+            log.info("Announce is already indexed as item %s [%s]" % (item.item_id, str(self)))
+            item.update(self)
+            return
 
-                if not self.pass_curator(ignore_whitelist=True):
-                    log.info("Announce failed 1st curation - Skipping it [%s]" % str(self))
-                else:
-                    log.info("Announce passed 1st curation - Queuing it up [%s]" % str(self))
-                    self.queue_up()
-
-            else:
-                # Is this announce really complete?
-                assert self.description is not None, "Announce description is not set"
-                assert self.native_picture_url, "Announce native_picture_url is not set"
-
-                if not self.pass_curator():
-                    log.info("Announce failed deep curation - Skipping it [%s]" % str(self))
-                else:
-                    log.info("Announce passed deep curation [%s]" % str(self))
-
-                    # Is there already an item associated with this announce?
-                    item = get_item_by_native_url(self.native_url)
-                    if item:
-                        log.info("Announce is already indexed as item %s [%s]" % (item.item_id, str(self)))
-                        # TODO: update the existing item with the new announce? only if has changed
-                    else:
-                        log.info("Creating new Item for announce [%s]" % str(self))
-                        item = create_item(
-                            self,
-                            index=index,
-                            real=real,
-                            source=source,
-                        )
-                        log.info("Item has item_id %s" % item.item_id)
+        # There is no item associated with this announce: create one!
+        log.info("Creating new Item for announce [%s]" % str(self))
+        item = create_item(
+            self,
+            index=index,
+            real=real,
+            source=source,
+        )
+        log.info("Item has item_id %s" % item.item_id)
+        return

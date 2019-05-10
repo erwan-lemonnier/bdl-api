@@ -168,6 +168,16 @@ class Item():
             self.item_id,
         )
 
+    def update(self, announce):
+        """Take an updated announce for this item and see if anything relevant (title,
+        description, price, etc) has changed. If so, update the item and save it
+
+        """
+
+        # TODO: implement item update
+        # TODO: log whether updating the item or not
+        pass
+
 
 class IndexableItem():
 
@@ -178,6 +188,7 @@ class IndexableItem():
         return 'items-live' if self.real else 'items-test'
 
     def index_to_es(self, async=True):
+
         """Store this item into Elasticsearch"""
 
         doc = ApiPool.bdl.model_to_json(self)

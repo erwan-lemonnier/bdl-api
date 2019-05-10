@@ -204,20 +204,19 @@ paths:
 
         Submit a list of announces that may or may not make it into bazardelux.
 
-        Submitted announces should at least have the following attributes set:
-        is_complete, is_sold, native_url. If the announce is sold, no other
-        attributes are needed.  If the announce is still for sale but
-        incomplete, the attributes title, price, currency must also be set. If
-        the announce is complete, at least description must also be set.
+        Submitted announces have different required attributes depending on what
+        they are telling:
 
-        Announces that are complete (is_complete is true) will be strongly
-        curated, and if they pass curation, will be added onto Bazardelux.
+        * An announce that has been sold must only have the attributes
+          'native_url' and 'is_sold' (set to True).
 
-        Announces that are incomplete pass through a lighter curation
-        filter. Those that pass get added to the scraper task queue and a
-        scraper will later on scrape the complete announce data from the given
-        native_url, and submit it again to this endpoint, this time with the
-        complete flag set to true.
+        * An announce that is incomplete must have the attributes 'native_url',
+          'is_sold' (set to False), 'is_complete' (set to False), 'title',
+          'price' and 'currency'.
+
+        * An announce that is complete must have the attributes of an incomplete
+          announce, plus 'description' and 'native_picture_url'. It can also
+          have all the other optional attributes.
 
       parameters:
         - in: body
@@ -626,7 +625,6 @@ definitions:
         description: (Optional) Link to original announce (outside Facebook, for example)
     required:
       - is_sold
-      - is_complete
       - native_url
 
 
