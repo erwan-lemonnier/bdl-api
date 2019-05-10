@@ -1,9 +1,12 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
+from pymacaron.utils import timenow
 from bdl.utils import mixin
 from bdl.categories import get_categories, SOLD, BLACKLIST_ALL
 from bdl.io.sqs import send_message
 from bdl.io.comprehend import identify_language
+from bdl.db.item import get_item_by_native_url
+from bdl.model.item import create_item
 
 
 log = logging.getLogger(__name__)
@@ -132,3 +135,82 @@ class Announce():
 
         # No category matches...
         return False
+
+
+    # ----------------------------------------
+    #
+    #   Announce processing logic
+    #
+    # ----------------------------------------
+
+    def process(self, index=None, source=None, real=None):
+        """Process this announce, ie check if it is sold, incomplete or complete, and
+        decide whether to create a new item, update an existing item, remove an
+        existing item associated to it, or queue up the announce for further
+        scraping
+
+        """
+
+        assert index in ('BDL', )
+        assert source in ('FACEBOOK', 'BLOCKET', 'TRADERA', 'TEST')
+        assert real in (True, False)
+
+        # If the announce is sold, we need to archive it
+        if self.is_sold:
+            log.info("Announce is sold [%s]" % str(self))
+            item = get_item_by_native_url(self.native_url)
+            if not item:
+                log.info("There is NO item based on this announce - Ignoring it")
+            else:
+                log.info("Found item %s based on this announce - Archiving it" % item.item_id)
+                item.is_sold = True
+                item.date_sold = timenow()
+                if self.price_sold:
+                    log.info("Setting item's price_sold: %s" % self.price_sold)
+                    item.price_sold = self.price_sold
+                item.archive()
+
+        else:
+            # This announce is still for sale. Does it pass curation?
+
+            # If no language is specified, use amazon comprehend to identify the
+            # announce's language
+            if not self.language:
+                self.identify_language()
+                log.info("Identified announce's language: %s [%s]" % (self.language, str(self)))
+
+            if not self.is_complete:
+
+                # Incomplete announce. Let's decide if we queue it up for complete scraping,
+                # or if we drop it already
+
+                if not self.pass_curator(ignore_whitelist=True):
+                    log.info("Announce failed 1st curation - Skipping it [%s]" % str(self))
+                else:
+                    log.info("Announce passed 1st curation - Queuing it up [%s]" % str(self))
+                    self.queue_up()
+
+            else:
+                # Is this announce really complete?
+                assert self.description is not None, "Announce description is not set"
+                assert self.native_picture_url, "Announce native_picture_url is not set"
+
+                if not self.pass_curator():
+                    log.info("Announce failed deep curation - Skipping it [%s]" % str(self))
+                else:
+                    log.info("Announce passed deep curation [%s]" % str(self))
+
+                    # Is there already an item associated with this announce?
+                    item = get_item_by_native_url(self.native_url)
+                    if item:
+                        log.info("Announce is already indexed as item %s [%s]" % (item.item_id, str(self)))
+                        # TODO: update the existing item with the new announce? only if has changed
+                    else:
+                        log.info("Creating new Item for announce [%s]" % str(self))
+                        item = create_item(
+                            self,
+                            index=index,
+                            real=real,
+                            source=source,
+                        )
+                        log.info("Item has item_id %s" % item.item_id)
