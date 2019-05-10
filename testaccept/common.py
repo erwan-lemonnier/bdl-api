@@ -55,13 +55,15 @@ class BDLTests(PyMacaronTestCase):
         if not item_id:
             item_id = self.item_id1
         j = self.assertPostReturnJson(
-            'v1/item',
+            'v1/announce',
             {
+                'is_complete': True,
+                'is_sold': False,
+                'language': 'en',
+                'item_id': item_id,
                 'index': 'BDL',
                 'real': False,
                 'source': 'TEST',
-                'slug': '',
-                'item_id': item_id,
                 'title': 'This is a test title',
                 'description': 'This i a test description',
                 'country': country,

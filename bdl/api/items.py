@@ -13,8 +13,7 @@ def do_create_test_item(data):
     assert data.index == 'BDL'
     assert data.real is False
     assert data.source == 'TEST'
-    data.is_complete = True
-    data.language = 'en'
+    assert data.item_id
 
     announce = ApiPool.bdl.model.Announce(
         **ApiPool.bdl.model_to_json(data)

@@ -52,7 +52,7 @@ class Tests(common.BDLTests):
                 'price_is_fixed': False,
                 'real': False,
                 'searchable_string': 'this is a test title this i a test description SOURCE_TEST COUNTRY_SE CURRENCY_SEK test-0000001',
-                'slug': '-',
+                'slug': 'This-is-a-test-title_1000_SEK__test-0000001',
                 'source': 'TEST',
                 'tags': [],
                 'picture_tags': [],

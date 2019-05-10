@@ -197,12 +197,14 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/item:
+  /v1/announce:
     post:
       summary: Register a new item (For testing only)
       description: |
 
-        Register a test item. This endpoint is used only for automated testing.
+        Register a test item based on the data in the provided Announce,
+        without first curating the announce. This endpoint is used only for
+        testing.
 
         The proper way to register real items is to submit parsed announces to
         v1/announces/queue and let the BDL backend decide which one to index as
@@ -214,7 +216,7 @@ paths:
           description: Data describing a test item.
           required: true
           schema:
-            $ref: "#/definitions/Item"
+            $ref: "#/definitions/Announce"
       tags:
         - Items
       produces:
@@ -242,7 +244,10 @@ paths:
         Submit a list of announces that may or may not make it into bazardelux.
 
         Submitted announces should at least have the following attributes set:
-        is_complete, title, native_url, price, currency, country.
+        is_complete, is_sold, native_url. If the announce is sold, no other
+        attributes are needed.  If the announce is still for sale but
+        incomplete, the attributes title, price, currency must also be set. If
+        the announce is complete, at least description must also be set.
 
         Announces that are complete (is_complete is true) will be strongly
         curated, and if they pass curation, will be added onto Bazardelux.
@@ -307,40 +312,6 @@ paths:
           description: Announces to parse
           schema:
             $ref: '#/definitions/AnnouncesToParse'
-        default:
-          description: Error
-          schema:
-            $ref: '#/definitions/Error'
-
-
-  /v1/announces/tocheck:
-    get:
-      summary: Get a batch of announces to check if they are sold or not.
-      description: |
-
-        Get a list of announces for which to check if the item has been sold or
-        not.
-
-      parameters:
-        - in: query
-          name: limit
-          type: number
-          description: Max number of announces to return (10 by default)
-          required: false
-
-      tags:
-        - Announces
-      produces:
-        - application/json
-      x-bind-server: bdl.api.announces.do_get_announces_to_check
-      x-bind-client: get_announces_to_check
-      x-decorate-server: pymacaron.auth.requires_auth
-      x-decorate-request: pymacaron.auth.add_auth
-      responses:
-        '200':
-          description: Ok
-          schema:
-            $ref: '#/definitions/Ok'
         default:
           description: Error
           schema:
@@ -631,9 +602,15 @@ definitions:
     type: object
     description: Announce data scraped from the marketplace''s announce wall.
     properties:
+      native_url:
+        type: string
+        description: URL to the original item announce on the scraped marketplace, unique for this item.
       is_complete:
         type: boolean
         description: True if all possible data has been extracted, False if some data can still be parsed.
+      is_sold:
+        type: boolean
+        description: Whether this item is still for sale or not.
       title:
         type: string
         description: Item title.
@@ -662,9 +639,6 @@ definitions:
       scraper_data:
         type: string
         description: (Optional) Extra data provided by the scraper The scraper/marketplace to use for scraping.
-      native_url:
-        type: string
-        description: URL to the original item announce on the scraped marketplace, unique for this item.
       native_picture_url:
         type: string
         description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
@@ -690,11 +664,8 @@ definitions:
         type: string
         description: (Optional) Link to original announce (outside Facebook, for example)
     required:
+      - is_sold
       - is_complete
-      - title
-      - country
-      - price
-      - currency
       - native_url
 
 
