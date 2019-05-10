@@ -64,7 +64,7 @@ class Item():
         """Set the item's category tags, by matching the announce's text against keywords"""
         item_tags = []
 
-        if not reset:
+        if not reset and self.tags:
             item_tags.append(self.tags)
 
         text = self.get_text()

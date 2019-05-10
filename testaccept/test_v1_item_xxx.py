@@ -55,6 +55,7 @@ class Tests(common.BDLTests):
                 'slug': '-',
                 'source': 'TEST',
                 'tags': [],
+                'picture_tags': [],
                 'title': 'This is a test title'
             },
         )

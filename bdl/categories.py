@@ -25,8 +25,8 @@ class Category:
     def __init__(self, name, blocket_category=None, prices=None):
         self.prices = prices
         self.name = name
-        self.whitelist = KeywordList('%s-whitelist.html' % name)
-        self.blacklist = KeywordList('%s-blacklist.html' % name)
+        self.whitelist = KeywordList('%s/%s-whitelist.html' % (DIR_LISTS, name))
+        self.blacklist = KeywordList('%s/%s-blacklist.html' % (DIR_LISTS, name))
         self.blocket_category = blocket_category
 
     def get_matching_words(self, text, language):
@@ -77,5 +77,5 @@ CATEGORIES = [
 def get_categories():
     return CATEGORIES
 
-SOLD = KeywordList('sold.html')
-BLACKLIST_ALL = KeywordList('all-blacklist.html')
+SOLD = KeywordList('%s/sold.html' % DIR_LISTS)
+BLACKLIST_ALL = KeywordList('%s/all-blacklist.html' % DIR_LISTS)
