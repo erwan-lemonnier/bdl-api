@@ -21,7 +21,10 @@ def text_to_words(s):
 
 
 class Keyword:
-    # A keyword to match against
+    """A keyword to match against any text. A keyword may match only against one
+    given language (self.language is set), or against all languages
+    (self.language is None)
+    """
 
     def __init__(self, word):
         self.language = None
@@ -36,35 +39,98 @@ class Keyword:
         """Check if this text matches with this keyword"""
         assert text
         assert language
-        log.debug("Matching [%s]/[%s] against %s" % (language, text, self))
+        # log.debug("Matching [%s]/[%s] against %s" % (language, text, self))
+
+        text = text.lower()
 
         if self.language and self.language != language:
             return False
 
         # Match words exactly
-        return " %s " % self.word in ' %s ' % text
+        return " %s " % self.word in " %s " % text
 
     def __str__(self):
         return '%s[%s]' % (self.word, self.language if self.language else '')
 
 
+class KeywordList:
+    """A list of keywords to match against any text. The keywords are parsed from
+    a file, which may optionally contain the following header attributes:
+
+    # parents: tag1, tag2...     -> parent tags under which matching items may be found
+    # grants: tag1, tag2...      -> tags to attach to any matching item
+    keyword1
+    keyword2  -> general keywords, matching whatever the language
+    en:keyword3   -> keyword to match only if announce is in english
+    <locale>:keyword4
+
+    Thanks to those header attributes, keyword lists may be linked to each
+    other to form a tree of nodes, in which the top nodes are the top
+    categories classifying the matching item.
+
+    """
+
+    def __init__(self, path):
+        log.info("Loading keyword list from %s" % path)
+
+        self.name = path.split('/')[-1].replace('.html', '').replace('.txt', '')
+        self.is_html = True if path.endswith('.html') else False
+        self.parent_tags = []
+        self.grant_tags = []
+        self.keywords = []
+
+        s = open(path).read()
+        for l in s.splitlines():
+            if l.startswith('#'):
+                if l.startswith('# parents: '):
+                    tags = l.split(':')[1].split(',')
+                    tags = [ss.strip() for ss in tags]
+                    self.parent_tags = tags
+                elif l.startswith('# grants: '):
+                    tags = l.split(':')[1].split(',')
+                    tags = [ss.strip() for ss in tags]
+                    self.grant_tags = tags
+                else:
+                    raise Exception("Keyword file has borked header: %s" % path)
+            else:
+                l = l.lower()
+                if self.is_html:
+                    l = html_to_unicode(l)
+                l = l.strip()
+                if l:
+                    self.keywords.append(Keyword(l))
+
+    def match(self, text, language):
+        assert language
+        # log.debug("Matching [%s]/[%s] against %s" % (language, text, self))
+        text = text.lower()
+        for w in self.keywords:
+            if w.match(text, language):
+                log.debug("Item matches [%s] in list %s" % (w, self.name))
+                return True
+        return False
+
+    def __str__(self):
+        return "<KeywordList '%s': %s>" % (
+            self.filename,
+            ' '.join([str(w) for w in self.keywords]),
+        )
+
+
 class Node:
 
-    # A tag file (=Node) has the following structure:
+    # Nodes are interconnected keyword lists, forming a tree with multiple roots. Attributes:
     #
-    # # parents: the tag nodes right over whatever matches any of those keywords
-    # # grants: the tags to assign to whatever matches any of those keywords
-    # keyword1
-    # keyword2  -> general keywords, matching whatever the language
-    # en:keyword3   -> keyword to match only if announce is in english
-    # <locale>:keyword4
+    # parents: list of parent nodes
+    # paths:   pathes from this node to the various root categgories they match
+    # grants:  list of nodes to grant a matching text
 
-    def __init__(self, name, match_words=[]):
+    def __init__(self, name, kwl):
         assert type(name) is str
-        assert type(match_words) is list
+        assert type(kwl) is KeywordList
 
         self.name = name
-        self.keywords = [Keyword(w) for w in match_words]
+        self.keywords = kwl.keywords
         self.parents = []
         self.paths = []
         self.grants = []
@@ -81,7 +147,7 @@ class Node:
         assert type(nodes) is list
         self.grants = nodes
 
-    def matches(self, text, language='en'):
+    def match(self, text, language='en'):
         """Return true if this node matches that string"""
         assert type(text) is str
 
@@ -95,7 +161,7 @@ class Node:
         return False
 
     def __str__(self):
-        return "Node:%s:Parents[%s]Paths[%s]" % (
+        return "<Node %s: Parents[%s] Paths[%s]>" % (
             self.name,
             ','.join([n.name for n in self.parents]),
             ','.join([str(p) for p in self.paths])
@@ -165,35 +231,13 @@ class Tree:
 
             # log.debug("Loading tags from %s" % filename)
 
-            s = open(DIR_TAGS + '/' + filename).read()
+            kwl = KeywordList(DIR_TAGS + '/' + filename)
 
-            match_words = []
-            name = filename.split('/')[-1].replace('.html', '')
-            parent_names = []
-            grants_names = []
-
-            for l in s.splitlines():
-                if l.startswith('#'):
-                    if l.startswith('# parents: '):
-                        parent_names = l.split(':')[1].split(',')
-                        parent_names = [ss.strip() for ss in parent_names]
-                    elif l.startswith('# grants: '):
-                        grants_names = l.split(':')[1].split(',')
-                        grants_names = [ss.strip() for ss in grants_names]
-                    else:
-                        raise Exception("File name %s is badly formatted" % filename)
-                else:
-                    l = l.lower()
-                    l = html_to_unicode(l)
-                    l = l.strip()
-                    if l:
-                        match_words.append(l)
-
-            node = Node(name, match_words)
+            node = Node(kwl.name, kwl)
             self.all_nodes[node.name] = node
 
-            node_parents[name] = parent_names
-            node_grants[name] = grants_names
+            node_parents[kwl.name] = kwl.parent_tags
+            node_grants[kwl.name] = kwl.grant_tags
 
             # log.info("Loaded node [%s] %s" % (node.name, parent_names))
 
@@ -267,7 +311,7 @@ def get_matching_tags(text):
 
     # Find all nodes
     for node in tree.get_all_nodes():
-        if node.matches(text):
+        if node.match(text):
             # log.debug('TAG MATCHER: Text [%s] matches node %s' % (text[0:10], node))
             matching_nodes[node.name] = node
             if node.grants:

@@ -65,7 +65,7 @@ class Item():
         item_tags = []
 
         if not reset:
-            item_tags = item_tags + self.tags
+            item_tags.append(self.tags)
 
         text = self.get_text()
 
@@ -73,12 +73,13 @@ class Item():
         for cat in get_categories():
             tags = cat.get_matching_words(text, self.language)
             if len(tags) > 0:
-                item_tags = item_tags + tags + [cat.name.upper()]
+                item_tags.append(tags)
+                item_tags.append([cat.name.upper()])
 
         # Find all tags/categories that match this item
         tags = get_matching_tags(text)
         if len(tags) > 0:
-            item_tags = item_tags + tags
+            item_tags.append(tags)
 
         self.tags = sorted(set(item_tags))
 

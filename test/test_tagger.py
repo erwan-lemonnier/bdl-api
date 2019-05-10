@@ -1,10 +1,14 @@
 import logging
+import os
 from unittest import TestCase
 from bdl.utils import html_to_unicode
-from bdl.tagger import Path, Node, Tree, get_matching_tags, get_tree
+from bdl.tagger import Keyword, KeywordList, Path, Node, Tree, get_matching_tags, get_tree
 
 
 log = logging.getLogger(__name__)
+
+
+PATH_ETC = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'etc')
 
 
 class Test(TestCase):
@@ -13,19 +17,94 @@ class Test(TestCase):
         t = Tree()
         t.load()
 
-    def test_node(self):
 
-        n = Node('louisvuitton', ['louis vuitton', 'vuitton', 'lv'])
-        self.assertTrue(n.matches('louis vuitton bag'))
-        self.assertTrue(n.matches('vuitton'))
-        self.assertFalse(n.matches('gucci bag'))
+    def assertKeywordMatch(self, w, text, language):
+        self.assertTrue(
+            w.match(text, language),
+            "Keyword %s should match [%s][%s] but does not" % (w, language, text)
+        )
+
+    def assertKeywordNoMatch(self, w, text, language):
+        self.assertFalse(
+            w.match(text, language),
+            "Keyword %s should match [%s][%s] but does not" % (w, text, language)
+        )
+
+    def test_keyword(self):
+        w = Keyword('all')
+        self.assertEqual(w.language, None)
+        self.assertEqual(w.word, 'all')
+
+        # Test matching when language independent
+        self.assertKeywordMatch(w, 'all', 'en')
+        self.assertKeywordMatch(w, 'all', 'sv')
+        self.assertKeywordMatch(w, 'ALL', 'en')
+        self.assertKeywordMatch(w, 'ALL', 'sv')
+        self.assertKeywordMatch(w, ' all ', 'en')
+        self.assertKeywordNoMatch(w, 'allright', 'en')
+        self.assertKeywordMatch(w, 'all i ever think about is you', 'en')
+        self.assertKeywordNoMatch(w, 'allright i ever think about is you', 'en')
+
+        # Test matching when language specific
+        w = Keyword('sv:all')
+        self.assertEqual(w.language, 'sv')
+        self.assertEqual(w.word, 'all')
+
+        self.assertKeywordNoMatch(w, 'all', 'en')
+        self.assertKeywordMatch(w, ' all ', 'sv')
+        self.assertKeywordNoMatch(w, 'ALL', 'en')
+        self.assertKeywordMatch(w, ' ALL ', 'sv')
+        self.assertKeywordNoMatch(w, 'allright', 'sv')
+        self.assertKeywordNoMatch(w, 'allright', 'en')
+        self.assertKeywordNoMatch(w, 'all i ever think about is you', 'en')
+        self.assertKeywordMatch(w, 'all i ever think about is you', 'sv')
+        self.assertKeywordNoMatch(w, 'allright i ever think about is you', 'sv')
+
+    def test_keywordlist(self):
+        # Test a keyword list with attributes (only 1 parent & 1 grant)
+        kwl = KeywordList('%s/tags/mulberry.html' % PATH_ETC)
+        self.assertEqual(kwl.name, 'mulberry')
+        self.assertEqual(kwl.is_html, True)
+        self.assertEqual(kwl.parent_tags, ['bags'])
+        self.assertEqual(kwl.grant_tags, ['fashion'])
+        self.assertEqual(len(kwl.keywords), 1)
+
+        # Test a keyword list with attributes (many parents & grants)
+        kwl = KeywordList('%s/tags/louisvuitton.html' % PATH_ETC)
+        self.assertEqual(kwl.name, 'louisvuitton')
+        self.assertEqual(kwl.is_html, True)
+        self.assertEqual(kwl.parent_tags, ['bags', 'shoes', 'glasses'])
+        self.assertEqual(kwl.grant_tags, ['fashion'])
+        self.assertEqual(len(kwl.keywords), 3)
+
+        # Test a keyword list without header (whitelist)
+        kwl = KeywordList('%s/sold.html' % PATH_ETC)
+        self.assertEqual(kwl.name, 'sold')
+        self.assertEqual(kwl.is_html, True)
+        self.assertEqual(kwl.parent_tags, [])
+        self.assertEqual(kwl.grant_tags, [])
+        self.assertEqual(len(kwl.keywords), 4)
+
+        self.assertTrue(kwl.match('sold', 'en'))
+        self.assertTrue(kwl.match('SOLD', 'en'))
+        self.assertFalse(kwl.match('unsold', 'en'))
+        self.assertTrue(kwl.match('babar sold his pants', 'en'))
+
+
+    def test_node(self):
+        kwl = KeywordList('%s/tags/louisvuitton.html' % PATH_ETC)
+        n = Node('louisvuitton', kwl)
+        self.assertEqual(n.name, 'louisvuitton')
+        self.assertTrue(n.match('louis vuitton bag'))
+        self.assertTrue(n.match('vuitton'))
+        self.assertFalse(n.match('gucci bag'))
 
 
     def test_path(self):
 
-        lv = Node('louisvuitton', ['louis vuitton', 'vuitton', 'lv'])
-        bag = Node('bags', ['bag', 'handbag'])
-        fashion = Node('fashion', [])
+        lv = Node('louisvuitton', KeywordList('%s/tags/louisvuitton.html' % PATH_ETC))
+        bag = Node('bags', KeywordList('%s/tags/bags.html' % PATH_ETC))
+        fashion = Node('fashion', KeywordList('%s/tags/fashion.html' % PATH_ETC))
 
         p = Path(fashion)
         p.has_child(bag)
