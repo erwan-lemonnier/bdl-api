@@ -101,8 +101,17 @@ class Tests(common.BDLTests):
 
 
     def test_v1_announces_process__incomplete_announce__rejected(self):
-        # TODO: load one announce with only limited data that does not pass the curator. Check that it does not enter the scraper queue
-        pass
+        self.cleanup()
+        url = self.native_test_url1
+
+        # Announce with a title that fails first curation
+        self.process_incomplete_announce(native_url=url, title='wont match anything')
+        self.assertEqual(get_item_by_native_url(url), None)
+
+        # Announce with a price that fails first curation
+        self.process_incomplete_announce(native_url=url, title='louis vuitton', price=0)
+        self.assertEqual(get_item_by_native_url(url), None)
+
 
     def test_v1_announces_process__incomplete_announce__accepted(self):
         # TODO: load one announce with only limited data that pass the curator. Check that it enters the scraper queue

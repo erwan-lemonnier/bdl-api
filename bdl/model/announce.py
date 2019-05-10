@@ -144,7 +144,7 @@ class Announce():
     # ----------------------------------------
 
 
-    def process(self, index=None, source=None, real=None):
+    def process(self, index=None):
         """Process this announce, ie check if it is sold, incomplete or complete, and
         decide whether to create a new item, update an existing item, remove an
         existing item associated to it, or queue up the announce for further
@@ -153,8 +153,8 @@ class Announce():
         """
 
         assert index in ('BDL', )
-        assert source in ('FACEBOOK', 'BLOCKET', 'TRADERA', 'TEST')
-        assert real in (True, False)
+        assert self.source in ('FACEBOOK', 'BLOCKET', 'TRADERA', 'TEST')
+        assert self.real in (True, False)
 
         # If the announce is sold, we need to archive it
         if self.is_sold:
@@ -217,8 +217,8 @@ class Announce():
         item = create_item(
             self,
             index=index,
-            real=real,
-            source=source,
+            real=self.real,
+            source=self.source,
         )
         log.info("Item has item_id %s" % item.item_id)
         return

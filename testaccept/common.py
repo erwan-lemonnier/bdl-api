@@ -69,13 +69,27 @@ class BDLTests(PyMacaronTestCase):
         )
 
 
-    def process_sold_announce(self, native_url=None, price=1000, currency='SEK'):
+    def process_sold_announce(self, native_url=None):
         """Post one sold announce with the given native_url"""
         if not native_url:
             native_url = self.native_test_url1
         self._call_announce_process({
             'is_sold': True,
             'native_url': native_url,
+        })
+
+
+    def process_incomplete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK'):
+        """Post an announce for sale but incomplete, with the given native_url"""
+        if not native_url:
+            native_url = self.native_test_url1
+        self._call_announce_process({
+            'is_sold': False,
+            'is_complete': False,
+            'native_url': native_url,
+            'title': title,
+            'price': price,
+            'currency': currency,
         })
 
 

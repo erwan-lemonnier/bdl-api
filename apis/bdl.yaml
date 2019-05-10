@@ -644,6 +644,13 @@ definitions:
       native_external_url:
         type: string
         description: (Optional) Link to original announce (outside Facebook, for example)
+      source:
+        type: string
+        description: (Set in backend) Where this announce is from.
+      real:
+        type: boolean
+        description: (Set in backend) True if this announce is real, false if not.
+
     required:
       - is_sold
       - native_url

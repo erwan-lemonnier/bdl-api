@@ -34,17 +34,15 @@ def do_process_announces(data):
             assert a.native_picture_url, "Announce native_picture_url is not set"
 
         model_to_announce(a)
+        a.source = data.source
+        a.real = data.real
 
-        a.process(
-            index=data.index,
-            source=data.source,
-            real=data.real,
-        )
+        a.process(index=data.index)
 
     return ApiPool.bdl.model.Ok()
 
 
-def do_get_announces_to_parse(limit, type):
+def do_get_announces_to_parse(limit, goal):
     """Return a list of announces that are waiting to be properly parsed so they
     can be curated.
     """
