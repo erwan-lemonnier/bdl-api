@@ -75,17 +75,15 @@ class Item():
         for cat in get_categories():
             tags = cat.get_matching_words(text, self.language)
             if len(tags) > 0:
-                item_tags.append(tags)
-                item_tags.append([cat.name.upper()])
+                item_tags = item_tags + tags + [cat.name.upper()]
 
         # Find all tags/categories that match this item
         tags = get_matching_tags(text)
         if len(tags) > 0:
-            item_tags.append(tags)
+            item_tags = item_tags + tags
 
-        self.tags = sorted(set(item_tags))
-
-        log.info("Tagging item with %s" % self.tags)
+        self.tags = sorted(list(set(item_tags)))
+        log.info("Tagged item with %s" % self.tags)
 
 
     def set_picture_tags(self):
@@ -137,8 +135,9 @@ class Item():
     def import_pictures(self):
         """Import the item's pictures and resize them"""
         # TODO: import item pictures to S3 and resize them
-        self.picture_url_w400 = self.picture_url
-        self.picture_url_w600 = self.picture_url
+        self.picture_url = self.native_picture_url
+        self.picture_url_w400 = self.native_picture_url
+        self.picture_url_w600 = self.native_picture_url
 
 
     def set_display_priority(self):
@@ -211,7 +210,7 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
     # Make sure this announce contains the minimum amount of data
     required = [
         'title', 'description', 'country', 'price', 'language',
-        'price_is_fixed', 'currency', 'native_url', 'picture_url',
+        'price_is_fixed', 'currency', 'native_url', 'native_picture_url',
     ]
     for k in required:
         assert hasattr(announce, k) and getattr(announce, k) is not None, "Announce has undefined attribute %s" % k

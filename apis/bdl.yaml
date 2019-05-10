@@ -197,45 +197,6 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/announce:
-    post:
-      summary: Register a new item (For testing only)
-      description: |
-
-        Register a test item based on the data in the provided Announce,
-        without first curating the announce. This endpoint is used only for
-        testing.
-
-        The proper way to register real items is to submit parsed announces to
-        v1/announces/queue and let the BDL backend decide which one to index as
-        items or not.
-
-      parameters:
-        - in: body
-          name: body
-          description: Data describing a test item.
-          required: true
-          schema:
-            $ref: "#/definitions/Announce"
-      tags:
-        - Items
-      produces:
-        - application/json
-      x-bind-server: bdl.api.items.do_create_test_item
-      x-bind-client: create_test_item
-      x-decorate-server: pymacaron.auth.requires_auth
-      x-decorate-request: pymacaron.auth.add_auth
-      responses:
-        '200':
-          description: Item for sale
-          schema:
-            $ref: '#/definitions/Item'
-        default:
-          description: Error
-          schema:
-            $ref: '#/definitions/Error'
-
-
   /v1/announces/process:
     post:
       summary: Submit one or more announces for curation.

@@ -38,7 +38,7 @@ class Category:
         for w in self.whitelist.keywords:
             if w.match(text, language):
                 log.debug("Item matches [%s] in %s whitelist" % (w, self.name))
-                tags.append(w.lower())
+                tags.append(w.word.lower())
         return tags
 
 

@@ -8,18 +8,18 @@ from bdl.db.item import get_item
 log = logging.getLogger(__name__)
 
 
-def do_create_test_item(data):
+# def do_create_test_item(data):
 
-    assert data.index == 'BDL'
-    assert data.real is False
-    assert data.source == 'TEST'
-    assert data.item_id
+#     assert data.index == 'BDL'
+#     assert data.real is False
+#     assert data.source == 'TEST'
+#     assert data.item_id
 
-    announce = ApiPool.bdl.model.Announce(
-        **ApiPool.bdl.model_to_json(data)
-    )
+#     announce = ApiPool.bdl.model.Announce(
+#         **ApiPool.bdl.model_to_json(data)
+#     )
 
-    return create_item(announce, item_id=data.item_id, index='BDL', real=False, source='TEST')
+#     return create_item(announce, item_id=data.item_id, index='BDL', real=False, source='TEST')
 
 
 def do_get_item(item_id):

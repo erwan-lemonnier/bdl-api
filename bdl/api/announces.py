@@ -57,15 +57,15 @@ def do_process_announces(data):
                 a.identify_language()
                 log.info("Identified announce's language: %s [%s]" % (a.language, str(a)))
 
-            if not a.is_complete():
+            if not a.is_complete:
 
                 # Incomplete announce. Let's decide if we queue it up for complete scraping,
                 # or if we drop it already
 
                 if not a.pass_curator(ignore_whitelist=True):
-                    log.info("Announce failed 1st curation - Skipping it [%]" % str(a))
+                    log.info("Announce failed 1st curation - Skipping it [%s]" % str(a))
                 else:
-                    log.info("Announce passed 1st curation - Queuing it up [%]" % str(a))
+                    log.info("Announce passed 1st curation - Queuing it up [%s]" % str(a))
                     a.queue_up()
 
             else:
@@ -76,14 +76,14 @@ def do_process_announces(data):
                 if not a.pass_curator():
                     log.info("Announce failed deep curation - Skipping it [%s]" % str(a))
                 else:
-                    log.info("Announce passed deep curation [%]" % str(a))
+                    log.info("Announce passed deep curation [%s]" % str(a))
 
                     # TODO: check whether an item already exists for this announce
-                    item = get_item_by_native_url()
+                    item = get_item_by_native_url(a.native_url)
                     if item:
                         log.info("Announce is already indexed as item %s [%s]" % (item.item_id, str(a)))
                     else:
-                        log.info("Creating new Item for announce [%]" % str(a))
+                        log.info("Creating new Item for announce [%s]" % str(a))
                         item = create_item(
                             a,
                             index=data.index,

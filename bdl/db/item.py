@@ -99,7 +99,9 @@ def get_item_by_native_url(native_url):
 
     assert dbitems['Count'] <= 1, "Found more than 1 Item with native_url: '%s'" % native_url
     if dbitems['Count'] == 1:
-        return PersistentItem.to_model(dbitems['Items'][0])
+        i = PersistentItem.to_model(dbitems['Items'][0])
+        model_to_item(i)
+        return i
 
     # Then the ArchivedItem table
     dbitems = PersistentArchivedItem.get_table().query(
@@ -109,6 +111,8 @@ def get_item_by_native_url(native_url):
 
     assert dbitems['Count'] <= 1, "Found more than 1 ArchivedItem with native_url: '%s'" % native_url
     if dbitems['Count'] == 1:
-        return PersistentArchivedItem.to_model(dbitems['Items'][0])
+        i = PersistentArchivedItem.to_model(dbitems['Items'][0])
+        model_to_item(i)
+        return i
 
     return None

@@ -21,10 +21,12 @@ class Tests(common.BDLTests):
 
     def test_v1_item_xxx(self):
         self.cleanup()
-        self.create_item(item_id=self.item_id1)
+        j = self.create_item(native_url=self.native_test_url1)
+        item_id = j['item_id']
+        self.assertTrue(item_id.startswith('tst-'))
 
         j0 = self.assertGetReturnJson(
-            'v1/item/%s' % self.item_id1,
+            'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
         self.assertIsItem(j0)
@@ -38,23 +40,33 @@ class Tests(common.BDLTests):
                 'currency': 'SEK',
                 'date_created': j0['date_created'],
                 'date_last_check': j0['date_last_check'],
-                'description': 'This i a test description',
+                'description': 'A nice louis vuitton bag',
                 'display_priority': 1,
                 'index': 'BDL',
                 'language': 'en',
                 'is_sold': False,
-                'item_id': 'test-0000001',
-                'native_url': 'bob',
+                'item_id': item_id,
+                'native_url': 'https://bdl.com/test1',
+                'native_picture_url': 'bob',
                 'picture_url': 'bob',
                 'picture_url_w400': 'bob',
                 'picture_url_w600': 'bob',
                 'price': 1000.0,
                 'price_is_fixed': False,
                 'real': False,
-                'searchable_string': 'this is a test title this i a test description SOURCE_TEST COUNTRY_SE CURRENCY_SEK test-0000001',
-                'slug': 'This-is-a-test-title_1000_SEK__test-0000001',
+                'searchable_string': 'this is a test title a nice louis vuitton bag SOURCE_TEST COUNTRY_SE CURRENCY_SEK %s :MODE: :BAGS: :FASHION: :LOUIS VUITTON: :LOUISVUITTON: :PATH:FASHION: :PATH:FASHION:BAGS: :PATH:FASHION:BAGS:LOUISVUITTON:' % item_id,
+                'slug': 'This-is-a-test-title_1000_SEK__%s' % item_id,
                 'source': 'TEST',
-                'tags': [],
+                'tags': [
+                    'MODE',
+                    'bags',
+                    'fashion',
+                    'louis vuitton',
+                    'louisvuitton',
+                    'path:fashion',
+                    'path:fashion:bags',
+                    'path:fashion:bags:louisvuitton'
+                ],
                 'picture_tags': [],
                 'title': 'This is a test title'
             },
@@ -62,7 +74,7 @@ class Tests(common.BDLTests):
 
         # Get again and verify that count_view is increased
         j1 = self.assertGetReturnJson(
-            'v1/item/%s' % self.item_id1,
+            'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
         self.assertIsItem(j1)
@@ -72,7 +84,7 @@ class Tests(common.BDLTests):
 
         # Now archive that item and check that we can still retrieve it
         j2 = self.assertPostReturnJson(
-            'v1/item/%s/archive' % self.item_id1,
+            'v1/item/%s/archive' % item_id,
             {
                 'reason': 'SOLD',
             },
@@ -85,7 +97,7 @@ class Tests(common.BDLTests):
 
         # We can still get it
         j3 = self.assertGetReturnJson(
-            'v1/item/%s' % self.item_id1,
+            'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
         self.assertIsItem(j3, is_sold=True)

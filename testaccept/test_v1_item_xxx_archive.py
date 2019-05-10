@@ -1,6 +1,7 @@
 import os
 import imp
 import logging
+from bdl.db.item import get_item_by_native_url
 
 
 common = imp.load_source('common', os.path.join(os.path.dirname(__file__), 'common.py'))
@@ -41,19 +42,19 @@ class Tests(common.BDLTests):
         self.cleanup()
 
         # Item is nowehere to be seen
-        self.assertIsNotInItemTable(self.item_id1)
-        self.assertIsNotInItemArchive(self.item_id1)
-        self.assertIsNotInES(self.item_id1, real=False)
+        self.assertEqual(get_item_by_native_url(self.native_test_url1), None)
+        # TODO: search for native_test_url1 in ES and make sure we get no hit
 
-        self.create_item(item_id=self.item_id1)
+        j = self.create_item(native_url=self.native_test_url1)
+        item_id = j['item_id']
 
-        self.assertIsInItemTable(self.item_id1)
-        self.assertIsNotInItemArchive(self.item_id1)
-        self.assertIsInES(self.item_id1, real=False)
+        self.assertIsInItemTable(item_id)
+        self.assertIsNotInItemArchive(item_id)
+        self.assertIsInES(item_id, real=False)
 
         # Now archive that item and check that we can still retrieve it
         j = self.assertPostReturnJson(
-            'v1/item/%s/archive' % self.item_id1,
+            'v1/item/%s/archive' % item_id,
             {
                 'reason': 'SOLD',
             },
@@ -61,13 +62,13 @@ class Tests(common.BDLTests):
         )
         self.assertIsItem(j, is_sold=True)
 
-        self.assertIsNotInItemTable(self.item_id1)
-        self.assertIsInItemArchive(self.item_id1)
-        self.assertIsNotInES(self.item_id1, real=False)
+        self.assertIsNotInItemTable(item_id)
+        self.assertIsInItemArchive(item_id)
+        self.assertIsNotInES(item_id, real=False)
 
         # We can still get it
         jj = self.assertGetReturnJson(
-            'v1/item/%s' % self.item_id1,
+            'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
         self.assertIsItem(jj, is_sold=True)
@@ -79,11 +80,12 @@ class Tests(common.BDLTests):
     def test_v1_item_xxx_archive__with_price(self):
         self.cleanup()
 
-        j0 = self.create_item(item_id=self.item_id1)
+        j0 = self.create_item(native_url=self.native_test_url1)
+        item_id = j0['item_id']
 
         # Now archive that item and check that we can still retrieve it
         j1 = self.assertPostReturnJson(
-            'v1/item/%s/archive' % self.item_id1,
+            'v1/item/%s/archive' % item_id,
             {
                 'reason': 'SOLD',
                 'price_sold': 300,
@@ -94,7 +96,7 @@ class Tests(common.BDLTests):
 
         # We can still get it
         j2 = self.assertGetReturnJson(
-            'v1/item/%s' % self.item_id1,
+            'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
         self.assertIsItem(j2, is_sold=True)

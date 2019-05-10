@@ -8,7 +8,9 @@ from bdl.formats import get_custom_formats
 from bdl.utils import gen_jwt_token
 from bdl.io.es import get_es
 from bdl.db.elasticsearch import es_delete_doc
-from bdl.db.item import PersistentItem, PersistentArchivedItem
+from bdl.db.item import PersistentItem
+from bdl.db.item import PersistentArchivedItem
+from bdl.db.item import get_item_by_native_url
 
 
 log = logging.getLogger(__name__)
@@ -21,8 +23,8 @@ class BDLTests(PyMacaronTestCase):
         self.maxDiff = None
         self.token = gen_jwt_token(type='test')
 
-        self.item_id1 = 'test-0000001'
-        self.item_id2 = 'test-0000002'
+        self.native_test_url1 = 'https://bdl.com/test1'
+        self.native_test_url2 = 'https://bdl.com/test2'
 
 
     def tearDown(self):
@@ -39,42 +41,54 @@ class BDLTests(PyMacaronTestCase):
 
     def cleanup(self):
         self.load_api()
-        for item_id in (self.item_id1, self.item_id2):
-            PersistentItem.get_table().delete_item(Key={'item_id': item_id})
-            PersistentArchivedItem.get_table().delete_item(Key={'item_id': item_id})
+        for url in (self.native_test_url1, self.native_test_url2):
+            item = get_item_by_native_url(url)
+            if item:
+                PersistentItem.get_table().delete_item(Key={'item_id': item.item_id})
+                PersistentArchivedItem.get_table().delete_item(Key={'item_id': item.item_id})
 
-            for index in ('items-test', 'items-live'):
-                es_delete_doc(
-                    index,
-                    'ITEM_FOR_SALE',
-                    item_id,
-                )
+                for index in ('items-test', 'items-live'):
+                    es_delete_doc(
+                        index,
+                        'ITEM_FOR_SALE',
+                        item.item_id,
+                    )
 
 
-    def create_item(self, item_id=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
-        if not item_id:
-            item_id = self.item_id1
-        j = self.assertPostReturnJson(
-            'v1/announce',
+    def create_item(self, native_url=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
+        if not native_url:
+            native_url = self.native_test_url1
+        self.assertPostReturnOk(
+            'v1/announces/process',
             {
-                'is_complete': True,
-                'is_sold': False,
-                'language': 'en',
-                'item_id': item_id,
                 'index': 'BDL',
-                'real': False,
                 'source': 'TEST',
-                'title': 'This is a test title',
-                'description': 'This i a test description',
-                'country': country,
-                'price': price,
-                'currency': currency,
-                'price_is_fixed': price_is_fixed,
-                'native_url': 'bob',
-                'picture_url': 'bob',
+                'real': False,
+                'announces': [
+                    {
+                        'is_complete': True,
+                        'is_sold': False,
+                        'language': 'en',
+                        'index': 'BDL',
+                        'real': False,
+                        'source': 'TEST',
+                        'title': 'This is a test title',
+                        'description': 'A nice louis vuitton bag',
+                        'country': country,
+                        'price': price,
+                        'currency': currency,
+                        'price_is_fixed': price_is_fixed,
+                        'native_url': native_url,
+                        'native_picture_url': 'bob',
+                    },
+                ],
             },
             auth="Bearer %s" % self.token,
         )
+
+        item = get_item_by_native_url(self.native_test_url1)
+        j = ApiPool.bdl.model_to_json(item)
+        log.debug("Created item: %s" % json.dumps(j, indent=4))
         self.assertIsItem(j)
         return j
 
@@ -87,7 +101,7 @@ class BDLTests(PyMacaronTestCase):
             'date_created', 'date_last_check',
             'count_views',
             'display_priority',
-            'tags',
+            'tags', 'picture_tags',
             'picture_url', 'picture_url_w400', 'picture_url_w600',
         ]
 
@@ -126,13 +140,13 @@ class BDLTests(PyMacaronTestCase):
         self.assertEqual(j, None)
 
     def assertIsInItemTable(self, item_id):
-        self.assertTrue('Item' in PersistentItem.get_table().get_item(Key={'item_id': self.item_id1}))
+        self.assertTrue('Item' in PersistentItem.get_table().get_item(Key={'item_id': item_id}))
 
     def assertIsNotInItemTable(self, item_id):
-        self.assertTrue('Item' not in PersistentItem.get_table().get_item(Key={'item_id': self.item_id1}))
+        self.assertTrue('Item' not in PersistentItem.get_table().get_item(Key={'item_id': item_id}))
 
     def assertIsInItemArchive(self, item_id):
-        self.assertTrue('Item' in PersistentArchivedItem.get_table().get_item(Key={'item_id': self.item_id1}))
+        self.assertTrue('Item' in PersistentArchivedItem.get_table().get_item(Key={'item_id': item_id}))
 
     def assertIsNotInItemArchive(self, item_id):
-        self.assertTrue('Item' not in PersistentArchivedItem.get_table().get_item(Key={'item_id': self.item_id1}))
+        self.assertTrue('Item' not in PersistentArchivedItem.get_table().get_item(Key={'item_id': item_id}))
