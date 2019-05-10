@@ -279,6 +279,11 @@ paths:
           enum:
             - CHECK_IF_SOLD
             - NEED_SCRAPING
+        - in: query
+          name: real
+          description: Get live tasks if 'true' (default), or test ones if 'false'.
+          required: false
+          type: string
 
       tags:
         - Announces
