@@ -101,7 +101,6 @@ class Tests(common.BDLTests):
 
 
     def test_v1_announces_process__incomplete_announce__rejected(self):
-
         # TODO: load one announce with only limited data that does not pass the curator. Check that it does not enter the scraper queue
         pass
 

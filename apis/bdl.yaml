@@ -245,12 +245,25 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/announces/toparse:
+  /v1/announces/toscrape:
     get:
-      summary: Get a list of announce to parse.
+      summary: Get a list of announces to parse.
       description: |
 
         Get a list of announces to parse one by one.
+
+        Use the goal parameter to get announces of the following
+        types:
+
+        * goal='CHECK_IF_SOLD': return announces for which the scraper needs to
+          verify if the announce if still for sale (in which case the parser
+          does not need to scrape and process the announce again), or if it has
+          been sold (or removed), in which case the announce should be processed
+          again with the is_sold attribute set to True.
+
+        * goal='NEED_SCRAPING': return announces that need to be completely
+          scraped, and sent back for processing with the is_complete attribute
+          set to True.
 
       parameters:
         - in: query
@@ -258,6 +271,14 @@ paths:
           type: number
           description: Max number of announces to return (10 by default)
           required: false
+        - in: query
+          name: goal
+          type: string
+          description: Why do we need to parse those announces.
+          required: true
+          enum:
+            - CHECK_IF_SOLD
+            - NEED_SCRAPING
 
       tags:
         - Announces
@@ -271,7 +292,7 @@ paths:
         '200':
           description: Announces to parse
           schema:
-            $ref: '#/definitions/AnnouncesToParse'
+            $ref: '#/definitions/ScraperTasks'
         default:
           description: Error
           schema:
@@ -628,7 +649,7 @@ definitions:
       - native_url
 
 
-  AnnouncesToParse:
+  ScraperTasks:
     type: object
     description: A list of announces to parse.
     properties:
@@ -636,7 +657,7 @@ definitions:
         type: array
         description: A list of announces to parse.
         items:
-          $ref: '#/definitions/Announce'
+          $ref: '#/definitions/ScraperTask'
 
 
   ScraperTask:

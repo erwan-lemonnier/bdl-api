@@ -143,6 +143,7 @@ class Announce():
     #
     # ----------------------------------------
 
+
     def process(self, index=None, source=None, real=None):
         """Process this announce, ie check if it is sold, incomplete or complete, and
         decide whether to create a new item, update an existing item, remove an
