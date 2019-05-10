@@ -2,12 +2,14 @@ import logging
 import json
 import re
 from uuid import uuid4
+from unidecode import unidecode
 from pymacaron_core.swagger.apipool import ApiPool
 from pymacaron.utils import to_epoch, timenow
 from pymacaron_dynamodb import get_dynamodb
 from bdl.db.elasticsearch import es_index_doc_async, es_index_doc, es_delete_doc
 from bdl.utils import mixin
 from bdl.utils import cleanup_string
+from bdl.utils import html_to_unicode
 from bdl.tagger import get_matching_tags
 from bdl.categories import get_categories
 
@@ -96,8 +98,14 @@ class Item():
 
     def set_slug(self):
         """Set the item's slug, which has to be unique"""
-        # TODO: set slug
-        self.slug = "-"
+
+        s = unidecode(html_to_unicode(self.title))
+        s = re.sub('[^0-9a-zA-Z]+', '-', s)
+        s = re.sub('[-]+', '-', s)
+        s = s.strip('-')
+        s = '%s_%s_%s__%s' % (s, self.price, self.currency, self.item_id)
+
+        self.slug = s
 
 
     def generate_searchable_string(self):
@@ -128,7 +136,7 @@ class Item():
 
     def import_pictures(self):
         """Import the item's pictures and resize them"""
-        # TODO
+        # TODO: import item pictures to S3 and resize them
         self.picture_url_w400 = self.picture_url
         self.picture_url_w600 = self.picture_url
 

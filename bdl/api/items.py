@@ -48,6 +48,7 @@ def do_archive_item(data, item_id=None):
 
 
 def do_search_items_for_sale(query, page=0, real=None, country=None, domain=None):
+    # TODO: implement search endpoint
     pass
 
     # real = boolstr_to_bool(real, True)

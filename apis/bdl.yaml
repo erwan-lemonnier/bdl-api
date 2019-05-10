@@ -492,13 +492,13 @@ definitions:
         description: URL to the original item announce on the scraped marketplace, unique for this item.
       picture_url:
         type: string
-        description: Original url of the item's main picture with the highest possible resolution.
+        description: The item's main picture with the highest possible resolution.
       picture_url_w400:
         type: string
-        description: Public facing url to get the item picture with width 400px.
+        description: The item's main picture resized to width 400px.
       picture_url_w600:
         type: string
-        description: Public facing url to get the item picture with width 600px.
+        description: The item's main picture resized to width 600px.
       count_views:
         type: integer
         description: Number of times this item was individually retrieved.

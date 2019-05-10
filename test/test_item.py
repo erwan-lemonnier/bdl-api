@@ -44,3 +44,20 @@ class Tests(TestCase):
         i.source = 'TEST'
         i.generate_id()
         self.assertFalse(i.item_id.startswith('tst-'))
+
+
+    def test_set_slug(self):
+        i = ApiPool.bdl.model.Item(item_id='tst-1234')
+        model_to_item(i)
+
+        tests = [
+            ['"Orre" i stengods, Gunnar Nylund Rörtrand, 1900 talets andra hälft.', 1500, 'sek', 'Orre-i-stengods-Gunnar-Nylund-Rortrand-1900-talets-andra-halft_1500_sek__tst-1234'],
+            ['a&b-c_d e!fGH.', 0, 'sek', 'a-b-c-d-e-fGH_0_sek__tst-1234'],
+        ]
+
+        for title, price, currency, slug in tests:
+            i.title = title
+            i.price = price
+            i.currency = currency
+            i.set_slug()
+            self.assertEqual(i.slug, slug)
