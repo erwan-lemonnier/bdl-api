@@ -613,6 +613,9 @@ definitions:
         type: number
         format: amount
         description: Price asked for this item.
+      price_is_fixed:
+        type: boolean
+        description: (Optional) True if item has a fixed price, false (default) if is an auction.
       currency:
         type: string
         format: currency

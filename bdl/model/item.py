@@ -220,7 +220,7 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
 
     # Make sure this announce contains the minimum amount of data
     required = [
-        'title', 'description', 'country', 'price', 'language',
+        'title', 'description', 'price', 'language', 'country',
         'price_is_fixed', 'currency', 'native_url', 'native_picture_url',
     ]
     for k in required:

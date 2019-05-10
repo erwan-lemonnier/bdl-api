@@ -93,6 +93,29 @@ class BDLTests(PyMacaronTestCase):
         })
 
 
+    def process_complete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', description='barfoo', native_picture_url='boo', language=None):
+        """Post an announce for sale with complete data, with the given native_url"""
+        if not native_url:
+            native_url = self.native_test_url1
+
+        data = {
+            'is_sold': False,
+            'is_complete': True,
+            'native_url': native_url,
+            'title': title,
+            'price': price,
+            'currency': currency,
+            'description': description,
+            'native_picture_url': native_picture_url,
+            'country': 'SE',
+        }
+
+        if language:
+            data['language'] = language
+
+        self._call_announce_process(data)
+
+
     def create_item(self, native_url=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
         if not native_url:
             native_url = self.native_test_url1

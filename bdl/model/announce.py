@@ -184,6 +184,7 @@ class Announce():
         # If the announce is incompletely parsed, we may want to schedule it
         # for complete parsing
         if not self.is_complete:
+            log.info("Announce is not complete [%s]" % str(self))
 
             # Let's decide if we queue it up for complete scraping, or if we
             # just drop it

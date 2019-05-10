@@ -32,10 +32,14 @@ def do_process_announces(data):
         if a.is_complete:
             assert a.description is not None, "Announce description is not set"
             assert a.native_picture_url, "Announce native_picture_url is not set"
+            assert a.country, "Announce country is not set"
 
         model_to_announce(a)
         a.source = data.source
         a.real = data.real
+
+        if a.price_is_fixed not in (True, False):
+            a.price_is_fixed = False
 
         a.process(index=data.index)
 
