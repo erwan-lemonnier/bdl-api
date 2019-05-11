@@ -668,7 +668,7 @@ definitions:
     type: object
     description: A list of announces to parse.
     properties:
-      announces:
+      tasks:
         type: array
         description: A list of announces to parse.
         items:
@@ -682,9 +682,12 @@ definitions:
       source:
         type: string
         description: The scraper to use for scraping.
-      name:
+      goal:
         type: string
-        description: A name for this announce.
+        description: Why do we need to parse those announces.
+        enum:
+          - CHECK_IF_SOLD
+          - NEED_SCRAPING
       native_url:
         type: string
         description: URL to the original item announce on the scraped marketplace, unique for this item.
@@ -697,6 +700,10 @@ definitions:
       scraper_data:
         type: string
         description: (Optional) Extra data provided by the scraper, as a json string.
+    required:
+      - source
+      - goal
+      - native_url
 
 
   #
