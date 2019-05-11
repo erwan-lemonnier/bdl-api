@@ -111,7 +111,7 @@ paths:
         - Search
       produces:
         - application/json
-      x-bind-server: bdl.api.items.do_search_items_for_sale
+      x-bind-server: bdl.api.search.do_search_items
       x-bind-client: search_items_for_sale
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
@@ -120,6 +120,65 @@ paths:
           description: Matching items
           schema:
             $ref: '#/definitions/ItemsForSale'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/items/process:
+    post:
+      summary: Submit one or more scraped objects for curation.
+      description: |
+
+        Submit a list of scraped objects that may or may not make it into the
+        targeted search index.
+
+        Submitted objects have different required attributes depending on what
+        they are telling:
+
+        * If the target index is 'BDL', the scraped objects in the 'data' list
+          must contain a 'bdlitem' object.
+
+        * If the target index is 'MODEL', the scraped objects in the 'data'
+          list must contain a 'topmodel' object.
+
+        If the targeted index is 'BDL' (bazardelux), various attributes must be
+        set depending on what the scraped data is telling:
+
+        * The ScrapedObject of a BDL item that has been sold must only have the
+          attributes 'native_url' and 'is_sold' (set to True).
+
+        * The ScrapedObject of a BDL item that is incompletely parsed must have
+          the attributes 'native_url', 'is_sold' (set to False), 'is_complete'
+          (set to False), 'title', 'price' and 'currency'.
+
+        * The ScrapedObject of a BDL item that is completely scraped must have
+          the attributes listed above (incomplete item), plus 'description' and
+          'native_picture_url'. It can also have all the other optional
+          attributes of a complete BDLItem object.
+
+      parameters:
+        - in: body
+          name: body
+          description: A list of new scraped objects to process.
+          required: true
+          schema:
+            $ref: "#/definitions/ScrapedObjects"
+
+      tags:
+        - Items
+      produces:
+        - application/json
+      x-bind-server: bdl.api.items.do_process_items
+      x-bind-client: process_items
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/Ok'
         default:
           description: Error
           schema:
@@ -197,91 +256,42 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/announces/process:
-    post:
-      summary: Submit one or more announces for curation.
-      description: |
-
-        Submit a list of announces that may or may not make it into bazardelux.
-
-        Submitted announces have different required attributes depending on what
-        they are telling:
-
-        * An announce that has been sold must only have the attributes
-          'native_url' and 'is_sold' (set to True).
-
-        * An announce that is incomplete must have the attributes 'native_url',
-          'is_sold' (set to False), 'is_complete' (set to False), 'title',
-          'price' and 'currency'.
-
-        * An announce that is complete must have the attributes of an incomplete
-          announce, plus 'description' and 'native_picture_url'. It can also
-          have all the other optional attributes.
-
-      parameters:
-        - in: body
-          name: body
-          description: A list of new announces to process.
-          required: true
-          schema:
-            $ref: "#/definitions/NewAnnounces"
-
-      tags:
-        - Announces
-      produces:
-        - application/json
-      x-bind-server: bdl.api.announces.do_process_announces
-      x-bind-client: process_announces
-      x-decorate-server: pymacaron.auth.requires_auth
-      x-decorate-request: pymacaron.auth.add_auth
-      responses:
-        '200':
-          description: Ok
-          schema:
-            $ref: '#/definitions/Ok'
-        default:
-          description: Error
-          schema:
-            $ref: '#/definitions/Error'
-
-
-  /v1/announces/toscrape:
+  /v1/tasks:
     get:
-      summary: Get a list of announces to parse.
+      summary: Get a list of tasks for web scrapers
       description: |
 
-        Get a list of announces to parse one by one.
+        Get a list of tasks for web scrapers.
 
-        Use the goal parameter to get announces of the following
-        types:
+        Use the goal parameter to select the kind of scraper task to retrieve:
 
-        * goal='CHECK_IF_SOLD': return announces for which the scraper needs to
+        * goal='CHECK_IF_SOLD': return BDL urls for which the scraper needs to
           verify if the announce if still for sale (in which case the parser
           does not need to scrape and process the announce again), or if it has
-          been sold (or removed), in which case the announce should be processed
-          again with the is_sold attribute set to True.
+          been sold (or removed), in which case the announce should be
+          processed again with the is_sold attribute set to True.
 
-        * goal='SCRAP_ANNOUNCE': return announces that need to be completely
-          scraped, and sent back for processing with the is_complete attribute
-          set to True.
+        * goal='SCRAP_URL': return urls of pages that need to be completely
+          scraped, and sent back for processing with the 'is_complete'
+          attribute set to True.
 
-        * goal='SCAN': list all announces on the landing page, up to a certain
-          boundary condition (date_until or limit).
+        * goal='SCAN': list all objects on a landing or index page, up to a
+          certain boundary condition (date_until or limit).
 
       parameters:
         - in: query
           name: limit
           type: number
-          description: Max number of announces to return (10 by default)
+          description: Max number of tasks to return (10 by default)
           required: false
         - in: query
           name: goal
           type: string
-          description: Why do we need to parse those announces.
+          description: What kind of tasks to get back.
           required: true
           enum:
             - CHECK_IF_SOLD
-            - SCRAP_ANNOUNCE
+            - SCRAP_URL
             - SCAN
         - in: query
           name: real
@@ -290,16 +300,16 @@ paths:
           type: string
 
       tags:
-        - Announces
+        - Tasks
       produces:
         - application/json
-      x-bind-server: bdl.api.announces.do_get_announces_to_parse
-      x-bind-client: get_announces_to_parse
+      x-bind-server: bdl.api.items.do_get_scraper_tasks
+      x-bind-client: get_scraper_tasks
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
       responses:
         '200':
-          description: Announces to parse
+          description: Pages to scrape
           schema:
             $ref: '#/definitions/ScraperTasks'
         default:
@@ -362,7 +372,7 @@ definitions:
         type: array
         description: Items for sale
         items:
-            $ref: "#/definitions/Item"
+          $ref: "#/definitions/Item"
 
 
   ArchivedItem:
@@ -379,20 +389,18 @@ definitions:
         description: Number of times this item was individually retrieved.
       display_priority:
         type: integer
-        description: A numeric grade of how good looking the annouce is - Higher grades should be displayed first in frontend.
-      price:
-        type: number
-        format: amount
-        description: Price asked for this item.
-      price_sold:
-        type: number
-        format: amount
-        description: (Optional) Price paid for this item, if it is sold and a price was available.
+        description: A numeric grade of how good looking this item is - Higher grades should be displayed first in frontend.
+      bdlitem:
+        description: (Optional) An item for sale on bazardelux.
+        $ref: '#/definitions/BDLItem'
+      topmodel:
+        description: (Optional) A top model profile.
+        $ref: '#/definitions/TopModel'
 
 
   Item:
     type: object
-    description: An item for sale.
+    description: An object, made of data scraped from somewhere.
     x-persist: bdl.db.item.PersistentItem
     properties:
       item_id:
@@ -403,36 +411,10 @@ definitions:
         description: Which index that item belongs to.
         enum:
           - BDL
-      title:
-        type: string
-        description: Item title.
-      description:
-        type: string
-        description: Main description of the item.
-      country:
-        type: string
-        format: country_code
-        description: Country where this item is/was sold.
-      location:
-        type: string
-        description: (Optional) Where in the country the item is located.
-      price:
-        type: number
-        format: amount
-        description: Price asked for this item.
-      price_is_fixed:
-        type: boolean
-        description: True if item has a fixed price, false if is an auction
-      currency:
-        type: string
-        format: currency
-        description: The currency of all item prices.
+          - MODEL
       real:
         type: boolean
         description: True if this data is real, false if not (test or mocked data). False by default.
-      slug:
-        type: string
-        description: Unique url slug for this item
       source:
         type: string
         description: Where did this item originate?
@@ -450,7 +432,80 @@ definitions:
         description: (Optional) Extra data provided by the scraper The scraper/marketplace to use for scraping.
       native_url:
         type: string
-        description: URL to the original item announce on the scraped marketplace, unique for this item.
+        description: URL to the scraped web page, used as a unique identified for this object.
+      count_views:
+        type: integer
+        description: Number of times this item was individually retrieved.
+      display_priority:
+        type: integer
+        description: A numeric grade of how good looking this item is - Higher grades should be displayed first in frontend.
+      slug:
+        type: string
+        description: Unique url slug for this item
+      searchable_string:
+        type: string
+        description: Concatenated title and description, set when stored in ES
+      date_created:
+        type: string
+        format: date-time
+        description: Date at which this item was listed on bazardelux.
+      date_last_check:
+        type: string
+        format: date-time
+        description: Date at which we last checked if this item is still for sale.
+      bdlitem:
+        description: (Optional) An item for sale on bazardelux.
+        $ref: '#/definitions/BDLItem'
+      topmodel:
+        description: (Optional) A top model profile.
+        $ref: '#/definitions/TopModel'
+    required:
+      - item_id
+      - index
+      - slug
+      - real
+      - source
+      - native_url
+
+
+  TopModel:
+    type: object
+    description: Profile of a top model.
+    additionalProperties: true
+
+
+  BDLItem:
+    type: object
+    description: Scraped data describing an item for sale on a p2p marketplace.
+    properties:
+      title:
+        type: string
+        description: Item title.
+      description:
+        type: string
+        description: Main description of the item.
+      country:
+        type: string
+        format: country_code
+        description: Country where this item is/was sold.
+      language:
+        type: string
+        format: language
+        description: The language of the text part of this item.
+      location:
+        type: string
+        description: (Optional) Where in the country the item is located.
+      price:
+        type: number
+        format: amount
+        description: Price asked for this item.
+      price_is_fixed:
+        type: boolean
+        description: True if item has a fixed price, false if is an auction
+      currency:
+        type: string
+        format: currency
+        description: The currency of all item prices.
       picture_url:
         type: string
         description: The item's main picture with the highest possible resolution.
@@ -460,12 +515,6 @@ definitions:
       picture_url_w600:
         type: string
         description: The item's main picture resized to width 600px.
-      count_views:
-        type: integer
-        description: Number of times this item was individually retrieved.
-      display_priority:
-        type: integer
-        description: A numeric grade of how good looking the annouce is - Higher grades should be displayed first in frontend.
       tags:
         type: array
         description: An array of string tags applied to that item
@@ -487,17 +536,6 @@ definitions:
         type: string
         format: date-time
         description: (Optional) Date at which this item was marked as sold.
-      searchable_string:
-        type: string
-        description: (ES only) Concatenated title and description, set when stored in ES
-      date_created:
-        type: string
-        format: date-time
-        description: Date at which this item was listed on bazardelux.
-      date_last_check:
-        type: string
-        format: date-time
-        description: Date at which we last checked if this item is still for sale.
       native_doc_id:
         type: string
         description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
@@ -523,18 +561,12 @@ definitions:
         type: string
         description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
     required:
-      - item_id
-      - index
-      - slug
       - title
       - description
       - country
       - price
       - price_is_fixed
-      - real
-      - source
       - currency
-      - native_url
       - picture_url
 
 
@@ -547,6 +579,7 @@ definitions:
         description: Reason why the item is being archived
         enum:
           - SOLD
+          - REMOVED
       price_sold:
         type: number
         format: amount
@@ -555,18 +588,19 @@ definitions:
       - reason
 
 
-  NewAnnounces:
+  ScrapedObjects:
     type: object
-    description: One of more announces for preliminary screening.
+    description: Data from one of more scraped pages, to be processed.
     properties:
       index:
         type: string
         description: Which index to store those items in.
         enum:
           - BDL
+          - MODEL
       source:
         type: string
-        description: Where are these announces from?
+        description: Where are those scraped objects from?
         enum:
           - FACEBOOK
           - BLOCKET
@@ -578,139 +612,79 @@ definitions:
           - TEST
       real:
         type: boolean
-        description: True if those announces are real (default), false if not (test data).
-      announces:
+        description: True if those objects are real (default), false if not (test data).
+      objects:
         type: array
-        description: A list of announces.
+        description: A list of scrapped objects.
         items:
-          $ref: '#/definitions/Announce'
+          $ref: '#/definitions/ScrapedObject'
     required:
       - source
-      - announces
+      - index
+      - data
 
-  Announce:
+
+  ScrapedObject:
     type: object
-    description: Announce data scraped from the marketplace''s announce wall.
+    description: Data gathered from a scraped page.
     properties:
-      native_url:
-        type: string
-        description: URL to the original item announce on the scraped marketplace, unique for this item.
       is_complete:
         type: boolean
         description: True if all possible data has been extracted, False if some data can still be parsed.
-      is_sold:
-        type: boolean
-        description: Whether this item is still for sale or not.
-      title:
+      native_url:
         type: string
-        description: Item title.
-      description:
-        type: string
-        description: (Optional) Main description of the item.
-      language:
-        type: string
-        format: language
-        description: The language of this announce.
-      country:
-        type: string
-        format: country_code
-        description: Country where this item is/was sold.
-      location:
-        type: string
-        description: (Optional) Where in the country the item is located.
-      price:
-        type: number
-        format: amount
-        description: Price asked for this item.
-      price_is_fixed:
-        type: boolean
-        description: (Optional) True if item has a fixed price, false (default) if is an auction.
-      currency:
-        type: string
-        format: currency
-        description: The currency of all item prices.
+        description: URL to the scraped web page, used as a unique identified for this object.
       scraper_data:
         type: string
         description: (Optional) Extra data provided by the scraper The scraper/marketplace to use for scraping.
-      native_picture_url:
-        type: string
-        description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
-      native_doc_id:
-        type: string
-        description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
-      native_seller_id:
-        type: string
-        description: (Optional) The seller ID of the original announce in its marketplace (Facebook owner ID)
-      native_seller_name:
-        type: string
-        description: (Optional) The seller name.
-      native_seller_is_shop:
-        type: boolean
-        description: (Optional) True if the owner is a shop, false if is a private person.
-      native_group_id:
-        type: string
-        description: (Optional) ID of facebook group where this item is.
-      native_location:
-        type: string
-        description: (Optional) Item location as presented on the original marketplace.
-      native_external_url:
-        type: string
-        description: (Optional) Link to original announce (outside Facebook, for example)
-      source:
-        type: string
-        description: (Set in backend) Where this announce is from.
-      real:
-        type: boolean
-        description: (Set in backend) True if this announce is real, false if not.
-
+      bdlitem:
+        description: (Optional) Data describing an item for sale on bazardelux.
+        $ref: '#/definitions/BDLItem'
+      topmodel:
+        description: (Optional) Data describing a top model.
+        $ref: '#/definitions/TopModel'
     required:
-      - is_sold
+      - is_complete
       - native_url
 
 
   ScraperTasks:
     type: object
-    description: A list of announces to parse.
+    description: A list of web pages to scrape.
     properties:
       tasks:
         type: array
-        description: A list of announces to parse.
+        description: A list of web pages to scrape.
         items:
           $ref: '#/definitions/ScraperTask'
       url_callback:
         type: string
-        description: (Optional) A callback url to call from the scraper to process each found announce (default to not pushing results and listing them back in reply instead)
+        description: (Optional) A callback url to call from the scraper to process each page''s data (default to not pushing results and listing them back in reply instead)
     required:
       - tasks
       - url_callback
     example:
       tasks: []
-      url_callback: https://api.bazardelux.com/v1/announces/process
+      url_callback: https://api.bazardelux.com/v1/objects/process
 
 
   ScraperTask:
     type: object
-    description: A queued url to scrap
+    description: A web page to scrape.
     properties:
       source:
         type: string
         description: The scraper to use for scraping.
       goal:
         type: string
-        description: Why do we need to parse those announces.
+        description: What kind of parsing to do on this page.
         enum:
           - CHECK_IF_SOLD
-          - SCRAP_ANNOUNCE
+          - SCRAP_URL
           - SCAN
       native_url:
         type: string
-        description: URL to the original item announce on the scraped marketplace, unique for this item.
-      native_doc_id:
-        type: string
-        description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
-      native_group_id:
-        type: string
-        description: (Optional) ID of facebook group where this item is.
+        description: URL to the original web page to scrape.
       scraper_data:
         type: string
         description: (Optional) Extra data provided by the scraper, as a json string.

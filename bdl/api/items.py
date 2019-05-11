@@ -1,28 +1,42 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
 from pymacaron.utils import timenow
-from bdl.model.item import create_item
+from bdl.exceptions import IndexNotSupportedError
 from bdl.db.item import get_item
+from bdl.model.scrapedobject import model_to_scraped_object
 
 
 log = logging.getLogger(__name__)
 
 
-# def do_create_test_item(data):
+def do_process_items(data):
+    """Take a list of scraped objects and decide whether to index them or not, or
+    queue up tasks to re-scrape them more thoroughly, or update pre-existing
+    items, or archive items.
 
-#     assert data.index == 'BDL'
-#     assert data.real is False
-#     assert data.source == 'TEST'
-#     assert data.item_id
+    """
 
-#     announce = ApiPool.bdl.model.Announce(
-#         **ApiPool.bdl.model_to_json(data)
-#     )
+    if data.index and data.index != 'BDL':
+        raise IndexNotSupportedError(data.index)
 
-#     return create_item(announce, item_id=data.item_id, index='BDL', real=False, source='TEST')
+    if data.real not in (True, False):
+        data.real = True
+
+    if data.source == 'TEST':
+        data.real = False
+
+    for o in data.objects:
+
+        model_to_scraped_object(o)
+        o.validate_for_processing()
+
+        o.process(index=dato.index)
+
+    return ApiPool.bdl.model.Ok()
 
 
 def do_get_item(item_id):
+    """Get one item given its ID, from the active index or the archive"""
 
     item = get_item(item_id)
     item.count_views = item.count_views + 1
@@ -32,77 +46,24 @@ def do_get_item(item_id):
 
 
 def do_archive_item(data, item_id=None):
+    """Archive an item"""
 
     assert data.reason == 'SOLD', "Archiving reason is %s" % data.reason
 
     item = get_item(item_id)
-    item.is_sold = True
-    item.date_sold = timenow()
-    if data.price_sold:
-        item.price_sold = data.price_sold
+    subitem = item._get_subitem()
+
+    assert item.index == 'BDL'
+    subitem.mark_as_sold(
+        price_sold=data.price_sold,
+    )
 
     item.archive()
 
     return item
 
 
-def do_search_items_for_sale(query, page=0, real=None, country=None, domain=None):
-    # TODO: implement search endpoint
+def do_get_scraper_tasks(limit, goal):
+    """Return a list of scraper tasks"""
+    # TODO: get scraper tasks
     pass
-
-    # real = boolstr_to_bool(real, True)
-    # item_per_page = 50
-
-    # if not page:
-    #     page = 0
-
-    # if not query:
-    #     query = '*'
-
-    # if not domain:
-    #     domain = 'kluemarket.com'
-
-    # res = search_item_sold_index(query, page, item_per_page, country, real=real)
-
-    # solditems = []
-    # count_found = res['hits']['total']
-    # for doc in res['hits']['hits']:
-    #     doc_id = doc['_id']
-    #     if doc_id.lower() != doc_id:
-    #         log.info("#######  DELETING %s" % doc_id)
-    #         get_es().delete(
-    #             index='items-sold-live',
-    #             doc_type='SOLD_ITEM',
-    #             id=doc_id,
-    #             refresh=True,
-    #             ignore=[404],
-    #         )
-    #         continue
-
-    #     item = doc_to_item_sold(doc, domain)
-    #     if is_error(item):
-    #         # Skip corrupt data
-    #         count_found = count_found - 1
-    #     else:
-    #         solditems.append(item)
-
-    # # Prepare the SearchResultSold object to send back
-    # def gen_url(page):
-    #     url = '/v1/search/query?query=%s&page=%s&domain=%s' % (quote_plus(query.encode('utf8')), int(page), domain)
-    #     if country:
-    #         url = url + '&country=%s' % country
-    #     return url
-
-    # if count_found <= (page + 1) * item_per_page:
-    #     url_next = None
-    # else:
-    #     url_next = gen_url(page + 1)
-
-    # log.debug("Found: %s" % solditems)
-    # return ApiPool.search.model.SearchResultSold(
-    #     count_found=count_found,
-    #     query=query,
-    #     url_this=gen_url(page),
-    #     url_next=url_next,
-    #     items=solditems,
-    # )

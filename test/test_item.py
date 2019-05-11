@@ -22,57 +22,42 @@ class Tests(TestCase):
 
     def test__str__(self):
         i = ApiPool.bdl.model.Item(
-            title='short title',
             item_id='tst-1234',
+            bdlitem=ApiPool.bdl.model.BDLItem(),
         )
         model_to_item(i)
 
-        self.assertEqual(str(i), "<Item tst-1234: 'short title'>")
-        i.title = 'And a very long title that is more than 20 characters long'
-        self.assertEqual(str(i), "<Item tst-1234: 'And a very long titl..'>")
-        i.price = 12
-        i.currency = 'SEK'
-        self.assertEqual(str(i), "<Item tst-1234: 'And a very long titl..' 12 SEK>")
+        self.assertEqual(str(i), "<Item tst-1234: <BDLItem>>")
+        i.bdlitem.title = 'short title'
+        self.assertEqual(str(i), "<Item tst-1234: <BDLItem 'short title'>>")
+        i.bdlitem.title = 'And a very long title that is more than 20 characters long'
+        self.assertEqual(str(i), "<Item tst-1234: <BDLItem 'And a very long titl..'>>")
+        i.bdlitem.price = 12
+        i.bdlitem.currency = 'SEK'
+        self.assertEqual(str(i), "<Item tst-1234: <BDLItem 'And a very long titl..' 12 SEK>>")
 
 
-    def test_generate_item_id(self):
+    def test_set_item_id(self):
         i = ApiPool.bdl.model.Item()
         model_to_item(i)
 
         i.source = 'TEST'
         self.assertEqual(i.item_id, None)
-        i.generate_id()
+        i.set_item_id()
         self.assertTrue(i.item_id.startswith('tst-'))
         self.assertEqual(len(i.item_id), 14)
 
         i.item_id = None
         i.source = 'BLOCKET'
-        i.generate_id()
+        i.set_item_id()
         self.assertTrue(i.item_id.startswith('bl-'))
 
         i.item_id = None
         i.source = 'TRADERA'
-        i.generate_id()
+        i.set_item_id()
         self.assertTrue(i.item_id.startswith('tr-'))
 
         # item_id is not regenerated if already set
         i.source = 'TEST'
-        i.generate_id()
+        i.set_item_id()
         self.assertFalse(i.item_id.startswith('tst-'))
-
-
-    def test_set_slug(self):
-        i = ApiPool.bdl.model.Item(item_id='tst-1234')
-        model_to_item(i)
-
-        tests = [
-            ['"Orre" i stengods, Gunnar Nylund Rörtrand, 1900 talets andra hälft.', 1500, 'sek', 'Orre-i-stengods-Gunnar-Nylund-Rortrand-1900-talets-andra-halft_1500_sek__tst-1234'],
-            ['a&b-c_d e!fGH.', 0, 'sek', 'a-b-c-d-e-fGH_0_sek__tst-1234'],
-        ]
-
-        for title, price, currency, slug in tests:
-            i.title = title
-            i.price = price
-            i.currency = currency
-            i.set_slug()
-            self.assertEqual(i.slug, slug)
