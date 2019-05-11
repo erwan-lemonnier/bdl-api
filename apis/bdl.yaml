@@ -261,7 +261,7 @@ paths:
           been sold (or removed), in which case the announce should be processed
           again with the is_sold attribute set to True.
 
-        * goal='NEED_SCRAPING': return announces that need to be completely
+        * goal='SCRAP_ANNOUNCE': return announces that need to be completely
           scraped, and sent back for processing with the is_complete attribute
           set to True.
 
@@ -278,7 +278,7 @@ paths:
           required: true
           enum:
             - CHECK_IF_SOLD
-            - NEED_SCRAPING
+            - SCRAP_ANNOUNCE
         - in: query
           name: real
           description: Get live tasks if 'true' (default), or test ones if 'false'.
@@ -687,7 +687,7 @@ definitions:
         description: Why do we need to parse those announces.
         enum:
           - CHECK_IF_SOLD
-          - NEED_SCRAPING
+          - SCRAP_ANNOUNCE
       native_url:
         type: string
         description: URL to the original item announce on the scraped marketplace, unique for this item.

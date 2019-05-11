@@ -38,7 +38,7 @@ class Announce():
 
     def to_scraper_task(self):
         return ApiPool.bdl.model.ScraperTask(
-            name=str(self),
+            goal='SCRAP_ANNOUNCE',
             source=self.source,
             scraper_data=self.scraper_data,
             native_url=self.native_url,
