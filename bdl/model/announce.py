@@ -21,12 +21,15 @@ def model_to_announce(o):
         o.is_complete = False
     mixin(o, Announce)
 
+    # Monkey patch __str__
+    def str(self):
+        return '<%s/%s (%s %s)>' % (self.source, self.title, self.price, self.currency)
+    o.__class__.__str__ = str
+    o.__class__.__repr__ = str
+    o.__class__.__unicode__ = str
+
 
 class Announce():
-
-    def __str__(self):
-        return '%s/%s (%s %s)' % (self.source, self.title, self.price, self.currency)
-
 
     def identify_language(self):
         """Use Amazon comprehend to identify the announce's language, prior to curation"""

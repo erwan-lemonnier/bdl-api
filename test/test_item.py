@@ -20,6 +20,21 @@ class Tests(TestCase):
         self.maxDiff = None
 
 
+    def test__str__(self):
+        i = ApiPool.bdl.model.Item(
+            title='short title',
+            item_id='tst-1234',
+        )
+        model_to_item(i)
+
+        self.assertEqual(str(i), "<Item tst-1234: 'short title'>")
+        i.title = 'And a very long title that is more than 20 characters long'
+        self.assertEqual(str(i), "<Item tst-1234: 'And a very long titl..'>")
+        i.price = 12
+        i.currency = 'SEK'
+        self.assertEqual(str(i), "<Item tst-1234: 'And a very long titl..' 12 SEK>")
+
+
     def test_generate_item_id(self):
         i = ApiPool.bdl.model.Item()
         model_to_item(i)

@@ -23,10 +23,15 @@ def model_to_item(o):
 
     # Monkey patch __str__
     def str(self):
-        return "<Item %s: '%s%s'>" % (self.item_id, self.title[0:20], '..' if len(self.title) > 20 else '')
+        return "<Item %s: '%s%s'%s>" % (
+            self.item_id,
+            self.title[0:20], '..' if len(self.title) > 20 else '',
+            ' %s %s' % (self.price, self.currency) if self.price and self.currency else '',
+        )
     o.__class__.__str__ = str
     o.__class__.__repr__ = str
     o.__class__.__unicode__ = str
+
 
 class Item():
 
@@ -73,7 +78,7 @@ class Item():
         item_tags = []
 
         if not reset and self.tags:
-            item_tags.append(self.tags)
+            item_tags = self.tags
 
         text = self.get_text()
 
@@ -81,12 +86,14 @@ class Item():
         for cat in get_categories():
             tags = cat.get_matching_words(text, self.language)
             if len(tags) > 0:
-                item_tags = item_tags + tags + [cat.name.upper()]
+                item_tags = item_tags + [t for t in tags] + [cat.name.upper()]
 
         # Find all tags/categories that match this item
         tags = get_matching_tags(text)
         if len(tags) > 0:
-            item_tags = item_tags + tags
+            item_tags = item_tags + [t for t in tags]
+
+        log.debug("Tags are: %s" % item_tags)
 
         self.tags = sorted(list(set(item_tags)))
         log.info("Tagged item with %s" % self.tags)
@@ -175,7 +182,7 @@ class Item():
         )
 
 
-    def regenerate(self, update_picture=False):
+    def regenerate(self, update_picture=False, async=False):
         """Regenerate all non-static attributes in this Item"""
         log.info("Re-generating all non-static item attributes")
         self.set_tags()
@@ -185,6 +192,7 @@ class Item():
             self.import_pictures()
             self.set_picture_tags()
         self.set_display_priority()
+        self.save_to_db(async=async)
 
 
     def update(self, announce):
@@ -207,7 +215,7 @@ class Item():
         for k in attributes:
             if hasattr(announce, k) and getattr(announce, k):
                 if not hasattr(self, k) or (hasattr(self, k) and getattr(self, k) != getattr(announce, k)):
-                    log.info("Updating Item %s's %s" % (self.item_id, k))
+                    log.info("Updating %s of Item %s" % (k, self.item_id))
                     setattr(self, k, getattr(announce, k))
                     updated = True
 
@@ -215,12 +223,15 @@ class Item():
         if self.native_picture_url != announce.native_picture_url:
             updated = True
             update_picture = True
+            log.info("Updating picture of Item %s" % self.item_id)
             self.native_picture_url = announce.native_picture_url
 
         # Re-generate this item
         if updated:
             log.info("Item has changed %s" % str(self))
             self.regenerate(update_picture=update_picture)
+
+        log.debug("Item is now %s" % str(self))
 
 
 class IndexableItem():
@@ -300,7 +311,5 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
 
     item.regenerate(update_picture=True)
     log.info("Created new Item %s (%s)" % (item.item_id, item.slug))
-
-    item.save_to_db(async=False)
 
     return item
