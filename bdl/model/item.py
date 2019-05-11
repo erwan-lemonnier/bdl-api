@@ -21,6 +21,12 @@ def model_to_item(o):
     """Take a bravado object and return a UserProfile"""
     mixin(o, Item, IndexableItem)
 
+    # Monkey patch __str__
+    def str(self):
+        return "<Item %s: '%s%s'>" % (self.item_id, self.title[0:20], '..' if len(self.title) > 20 else '')
+    o.__class__.__str__ = str
+    o.__class__.__repr__ = str
+    o.__class__.__unicode__ = str
 
 class Item():
 
@@ -168,15 +174,53 @@ class Item():
             self.item_id,
         )
 
+
+    def regenerate(self, update_picture=False):
+        """Regenerate all non-static attributes in this Item"""
+        log.info("Re-generating all non-static item attributes")
+        self.set_tags()
+        self.set_slug()
+        self.generate_searchable_string()
+        if update_picture:
+            self.import_pictures()
+            self.set_picture_tags()
+        self.set_display_priority()
+
+
     def update(self, announce):
         """Take an updated announce for this item and see if anything relevant (title,
         description, price, etc) has changed. If so, update the item and save it
-
         """
 
-        # TODO: implement item update
-        # TODO: log whether updating the item or not
-        pass
+        updated = False
+        update_picture = False
+
+        # These are the attributes to update in the item if they have changed
+        # NOTE: we should absolutly not update the native_url
+        attributes = [
+            'title', 'description', 'price', 'currency', 'language', 'country',
+            'location', 'price_is_fixed', 'native_doc_id', 'native_seller_id',
+            'native_seller_name', 'native_seller_is_shop', 'native_group_id',
+            'native_location',
+        ]
+
+        for k in attributes:
+            if hasattr(announce, k) and getattr(announce, k):
+                if not hasattr(self, k) or (hasattr(self, k) and getattr(self, k) != getattr(announce, k)):
+                    log.info("Updating Item %s's %s" % (self.item_id, k))
+                    setattr(self, k, getattr(announce, k))
+                    updated = True
+
+        # If the picture has changed, also update it
+        if self.native_picture_url != announce.native_picture_url:
+            updated = True
+            update_picture = True
+            self.native_picture_url = announce.native_picture_url
+
+        # Re-generate this item
+        if updated:
+            log.info("Item has changed %s" % str(self))
+            self.regenerate(update_picture=update_picture)
 
 
 class IndexableItem():
@@ -254,15 +298,8 @@ def create_item(announce, item_id=None, index=None, real=False, source=None):
     if item.source == 'TEST':
         item.real = False
 
-    item.set_tags()
-    item.set_slug()
-
+    item.regenerate(update_picture=True)
     log.info("Created new Item %s (%s)" % (item.item_id, item.slug))
-
-    item.generate_searchable_string()
-    item.set_display_priority()
-    item.import_pictures()
-    item.set_picture_tags()
 
     item.save_to_db(async=False)
 

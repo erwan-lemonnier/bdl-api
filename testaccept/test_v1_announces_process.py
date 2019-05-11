@@ -167,3 +167,8 @@ class Tests(common.BDLTests):
         })
 
         # Send the announce again, but change price. Check that the item got updated
+        self.process_complete_announce(native_url=url, title='louis vuitton', description='nice bag', price=800)
+        jj = self.get_item(native_url=url)
+        j['price'] = 800
+        j['slug'] = 'louis-vuitton_800_SEK__%s' % j['item_id']
+        self.assertEqual(jj, j)
