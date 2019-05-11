@@ -265,6 +265,9 @@ paths:
           scraped, and sent back for processing with the is_complete attribute
           set to True.
 
+        * goal='SCAN': list all announces on the landing page, up to a certain
+          boundary condition (date_until or limit).
+
       parameters:
         - in: query
           name: limit
@@ -279,6 +282,7 @@ paths:
           enum:
             - CHECK_IF_SOLD
             - SCRAP_ANNOUNCE
+            - SCAN
         - in: query
           name: real
           description: Get live tasks if 'true' (default), or test ones if 'false'.
@@ -673,6 +677,15 @@ definitions:
         description: A list of announces to parse.
         items:
           $ref: '#/definitions/ScraperTask'
+      url_callback:
+        type: string
+        description: (Optional) A callback url to call from the scraper to process each found announce (default to not pushing results and listing them back in reply instead)
+    required:
+      - tasks
+      - url_callback
+    example:
+      tasks: []
+      url_callback: https://api.bazardelux.com/v1/announces/process
 
 
   ScraperTask:
@@ -688,6 +701,7 @@ definitions:
         enum:
           - CHECK_IF_SOLD
           - SCRAP_ANNOUNCE
+          - SCAN
       native_url:
         type: string
         description: URL to the original item announce on the scraped marketplace, unique for this item.
