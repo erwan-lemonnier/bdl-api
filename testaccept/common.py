@@ -129,6 +129,7 @@ class BDLTests(PyMacaronTestCase):
     # Specific to BDL
     #
 
+
     def process_sold_announce(self, native_url=None):
         """Post one sold announce with the given native_url"""
         if not native_url:
