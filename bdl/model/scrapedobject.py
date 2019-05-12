@@ -25,8 +25,8 @@ def model_to_scraped_object(o):
 
     # Monkey patch __str__
     def str(self):
-        subitem = "%s" % self.get_subitem()
-        return '<ScrapedObject %s %s >' % (
+        subitem = " %s " % self.get_subitem() if hasattr(self, 'get_subitem') else ''
+        return '<ScrapedObject %s%s>' % (
             self.native_url,
             subitem,
         )
