@@ -390,6 +390,14 @@ definitions:
       display_priority:
         type: integer
         description: A numeric grade of how good looking this item is - Higher grades should be displayed first in frontend.
+      date_created:
+        type: string
+        format: date-time
+        description: Date at which this item was listed on bazardelux.
+      date_last_check:
+        type: string
+        format: date-time
+        description: Date at which we last checked if this item is still for sale.
       bdlitem:
         description: (Optional) An item for sale on bazardelux.
         $ref: '#/definitions/BDLItem'
@@ -561,13 +569,7 @@ definitions:
         type: string
         description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
     required:
-      - title
-      - description
-      - country
-      - price
-      - price_is_fixed
-      - currency
-      - picture_url
+      - is_sold
 
 
   ArchiveReason:
@@ -621,7 +623,7 @@ definitions:
     required:
       - source
       - index
-      - data
+      - objects
 
 
   ScrapedObject:

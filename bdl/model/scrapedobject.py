@@ -1,5 +1,6 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
+from bdl.exceptions import InvalidDataError
 from bdl.utils import mixin
 from bdl.io.sqs import send_message
 from bdl.model.bdlitem import model_to_bdlitem
@@ -24,11 +25,10 @@ def model_to_scraped_object(o):
 
     # Monkey patch __str__
     def str(self):
-        return '<ScrapedObject %s-%s/%s %s >' % (
-            self.source,
-            self.index,
-            'real' if self.real else 'test',
-            str(self._get_subitem()),
+        subitem = "%s" % self.get_subitem()
+        return '<ScrapedObject %s %s >' % (
+            self.native_url,
+            subitem,
         )
     o.__class__.__str__ = str
     o.__class__.__repr__ = str
@@ -37,7 +37,7 @@ def model_to_scraped_object(o):
 
 class ScrapedObject():
 
-    def _get_subitem(self):
+    def get_subitem(self):
         if self.bdlitem:
             return self.bdlitem
         elif self.topmodel:
@@ -46,34 +46,41 @@ class ScrapedObject():
 
     def validate_for_processing(self):
         """Make sure this scraped object contains all the data we need from it"""
-        assert self.native_url, "Announce native_url is not set"
-        assert self.is_complete in (True, False), "Announce is_complete is not set (%s)" % self.native_url
-        self._get_subitem().validate_for_processing(self.native_url)
-
-
-    def to_scraper_task(self):
-        return ApiPool.bdl.model.ScraperTask(
-            goal='SCRAP_ANNOUNCE',
-            source=self.source,
-            scraper_data=self.scraper_data,
+        if not self.bdlitem and not self.topmodel:
+            raise InvalidDataError('scraped object has no subitem')
+        self.get_subitem().validate_for_processing(
             native_url=self.native_url,
-            native_doc_id=self.native_doc_id,
-            native_group_id=self.native_group_id,
+            is_complete=self.is_complete,
         )
 
 
-    def queue_up(self):
+    def to_scraper_task(self, source):
+        assert source
+        return ApiPool.bdl.model.ScraperTask(
+            goal='SCRAP_URL',
+            source=source,
+            scraper_data=self.scraper_data,
+            native_url=self.native_url,
+        )
+
+
+    def queue_up(self, source=None):
         """Queue up this announce to be completely parsed later on"""
         log.info("Queuing up announce '%s' for deep scraping" % str(self))
+        task = self.to_scraper_task(source)
         send_message(
             QUEUE_NAME,
-            ApiPool.bdl.model_to_json(self.to_scraper_task()),
+            ApiPool.bdl.model_to_json(task),
         )
 
 
     def process(self, index=None, source=None, real=None):
         """Process this scraped object"""
-        subitem = self._get_subitem()
+        assert index is not None
+        assert real in (True, False)
+        assert source is not None
+
+        subitem = self.get_subitem()
         action = subitem.process(
             native_url=self.native_url,
             is_complete=self.is_complete,
@@ -81,12 +88,13 @@ class ScrapedObject():
         assert action in ('SKIP', 'INDEX', 'QUEUE')
 
         if action == 'QUEUE':
-            self.queue_up()
+            self.queue_up(source=source)
+
         elif action == 'INDEX':
             item = create_item(
                 self,
                 index=index,
-                real=self.real,
-                source=self.source,
+                real=real,
+                source=source,
             )
             log.info("New Item has item_id=%s" % item.item_id)

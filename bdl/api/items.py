@@ -1,6 +1,5 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
-from pymacaron.utils import timenow
 from bdl.exceptions import IndexNotSupportedError
 from bdl.db.item import get_item
 from bdl.model.scrapedobject import model_to_scraped_object
@@ -27,10 +26,17 @@ def do_process_items(data):
 
     for o in data.objects:
 
+        log.info('Looking at scraped object %s' % str(o.native_url))
         model_to_scraped_object(o)
+
+
         o.validate_for_processing()
 
-        o.process(index=dato.index)
+        o.process(
+            index=data.index,
+            source=data.source,
+            real=data.real,
+        )
 
     return ApiPool.bdl.model.Ok()
 
@@ -51,13 +57,12 @@ def do_archive_item(data, item_id=None):
     assert data.reason == 'SOLD', "Archiving reason is %s" % data.reason
 
     item = get_item(item_id)
-    subitem = item._get_subitem()
+    subitem = item.get_subitem()
 
     assert item.index == 'BDL'
-    subitem.mark_as_sold(
-        price_sold=data.price_sold,
-    )
-
+    if data.price_sold:
+        subitem.price_sold = data.price_sold
+    subitem.mark_as_sold()
     item.archive()
 
     return item

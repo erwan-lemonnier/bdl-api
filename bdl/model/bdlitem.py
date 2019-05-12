@@ -2,6 +2,7 @@ import logging
 import re
 from unidecode import unidecode
 from pymacaron.utils import timenow
+from bdl.exceptions import InvalidDataError
 from bdl.utils import mixin
 from bdl.utils import cleanup_string
 from bdl.utils import html_to_unicode
@@ -43,17 +44,17 @@ class BDLItem():
         return 'BDL_ITEM'
 
 
-    def validate_for_processing(self, native_url):
-        assert self.is_sold in (True, False), "Announce is_complete is not set (%s)" % native_url
+    def validate_for_processing(self, native_url=None, is_complete=None):
+        assert native_url
+        assert is_complete in (True, False)
+        required = []
         if not self.is_sold:
-            assert self.is_complete in (True, False), "Announce is_complete is not set (%s)" % self.native_url
-            assert self.title is not None, "Announce title is not set (%s)" % self.native_url
-            assert self.price is not None, "Announce price is not set (%s)" % self.native_url
-            assert self.currency, "Announce currency is not set (%s)" % self.native_url
-        if self.is_complete:
-            assert self.description is not None, "Announce description is not set"
-            assert self.native_picture_url, "Announce native_picture_url is not set"
-            assert self.country, "Announce country is not set"
+            required = required + ['title', 'price', 'currency']
+        if is_complete:
+            required = required + ['description', 'native_picture_url', 'country']
+        for k in required:
+            if getattr(self, k) is None:
+                raise InvalidDataError('BDL item has no %s (%s)' % (k, native_url))
         if self.price_is_fixed not in (True, False):
             self.price_is_fixed = False
 
@@ -175,15 +176,13 @@ class BDLItem():
         return 1
 
 
-    def mark_as_sold(self, price_sold=None):
+    def mark_as_sold(self):
+        log.info("Marking BDLItem as sold: %s" % self)
         self.is_sold = True
         self.date_sold = timenow()
-        if price_sold:
-            log.info("Setting item's price_sold: %s" % price_sold)
-            self.price_sold = price_sold
 
 
-    def update(self, obj):
+    def update(self, item, obj):
         """Take an updated scrapedobject for this item and see if anything relevant
         (title, description, price, etc) has changed. If so, update the item
         and save it
@@ -205,7 +204,7 @@ class BDLItem():
         for k in attributes:
             if hasattr(obj, k) and getattr(obj, k):
                 if not hasattr(self, k) or (hasattr(self, k) and getattr(self, k) != getattr(obj, k)):
-                    log.info("Updating %s of Item %s" % (k, self.item_id))
+                    log.info("Updating Item %s" % k)
                     setattr(self, k, getattr(obj, k))
                     updated = True
 
@@ -219,7 +218,7 @@ class BDLItem():
         # Re-generate this item
         if updated:
             log.info("BDLItem has changed %s" % str(self))
-            self.regenerate(update_picture=update_picture)
+            item.regenerate(update_picture=update_picture)
 
         log.debug("BDLItem is now %s" % str(self))
 
@@ -330,9 +329,7 @@ class BDLItem():
                 return 'SKIP'
 
             log.info("Found item %s based on this announce - Archiving it" % item.item_id)
-            item.mark_as_sold(
-                price_sold=self.price_sold if hasattr(self, 'price_sold') else None,
-            )
+            item.get_subitem().mark_as_sold()
             item.archive()
             return 'SKIP'
 
@@ -368,7 +365,7 @@ class BDLItem():
         log.info("Announce passed deep curation [%s]" % str(self))
 
         # Is there already an item associated with this announce?
-        item = get_item_by_native_url(self.native_url)
+        item = get_item_by_native_url(native_url)
         if item:
             log.info("Announce is already indexed as item %s [%s]" % (item.item_id, str(self)))
             item.update(self)

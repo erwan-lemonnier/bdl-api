@@ -15,22 +15,28 @@ def store_item(item):
     log.debug("Storing to DB: %s" % json.dumps(ApiPool.bdl.model_to_json(item), indent=4))
     # REMOVE
 
-    # Duh. Dynamodb does not like floats...
-    price = item.price
+    # Duh. Dynamodb does not like floats: convert them to strings...
+    price = None
     price_sold = None
-    if hasattr(item, 'price_sold'):
-        price_sold = item.price_sold
+    if item.bdlitem:
+        price = item.bdlitem.price
+        price_sold = None
+        if hasattr(item.bdlitem, 'price_sold'):
+            price_sold = item.bdlitem.price_sold
 
-    if price:
-        item.price = str(price)
-    if price_sold:
-        item.price_sold = str(price_sold)
+        if price:
+            item.bdlitem.price = str(price)
+        if price_sold:
+            item.bdlitem.price_sold = str(price_sold)
+    # End of float normalization
 
     PersistentSwaggerObject.save_to_db(item)
 
-    item.price = price
-    if price_sold:
-        item.price_sold = price_sold
+    # Restore float values
+    if item.bdlitem:
+        item.bdlitem.price = price
+        if price_sold:
+            item.bdlitem.price_sold = price_sold
 
 
 class PersistentItem(PersistentSwaggerObject):

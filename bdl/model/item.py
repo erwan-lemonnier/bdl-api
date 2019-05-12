@@ -1,5 +1,6 @@
 import logging
 import json
+from copy import deepcopy
 from uuid import uuid4
 from pymacaron_core.swagger.apipool import ApiPool
 from pymacaron.utils import to_epoch, timenow
@@ -16,13 +17,15 @@ def model_to_item(o):
     mixin(o, Item, IndexableItem)
     if o.bdlitem:
         from bdl.model.bdlitem import model_to_bdlitem
+        if type(o.bdlitem) is dict:
+            o.bdlitem = ApiPool.bdl.json_to_model('BDLItem', o.bdlitem)
         model_to_bdlitem(o.bdlitem)
     elif o.topmodel:
         raise Exception('model_to_topmodel not implemented')
 
     # Monkey patch __str__
     def str(self):
-        subitem = "%s" % self._get_subitem()
+        subitem = "%s" % self.get_subitem()
         return "<Item %s: %s>" % (
             self.item_id,
             subitem,
@@ -35,7 +38,7 @@ def model_to_item(o):
 
 class Item():
 
-    def _get_subitem(self):
+    def get_subitem(self):
         """Return the scraped object stored in this item"""
 
         if self.bdlitem:
@@ -45,7 +48,7 @@ class Item():
 
 
     # def get_text(self):
-    #     return self._get_subitem().get_text()
+    #     return self.get_subitem().get_text()
 
 
     def set_item_id(self):
@@ -80,7 +83,7 @@ class Item():
         """Regenerate all non-static attributes in this Item and its subitem"""
 
         log.info("Re-generating all non-static item attributes")
-        subitem = self._get_subitem()
+        subitem = self.get_subitem()
         subitem.regenerate(update_picture=update_picture)
         self.slug = subitem.get_slug(item_id=self.item_id)
         self.searchable_string = subitem.get_searchable_string(self)
@@ -112,16 +115,19 @@ class Item():
             self.item_id,
         )
 
+    def update(self, newsubitem):
+        self.get_subitem().update(self, newsubitem)
+
 
 class IndexableItem():
 
     def get_es_doc_type(self):
-        return self._get_subitem().doc_type(),
+        return self.get_subitem().doc_type(),
 
 
     def get_es_index(self):
         return '%s-%s' % (
-            self._get_subitem().index_name(),
+            self.get_subitem().index_name(),
             'live' if self.real else 'test',
         )
 
@@ -164,7 +170,7 @@ def create_item(sobj, index=None, source=None, real=False):
     # Make sure this scrapped object contains the minimum amount of data
     assert sobj.native_url, 'Scraped object has no native_url'
     assert sobj.is_complete in (True, False), 'Scraped object\'s is_complete is not True or False'
-    sobj._get_subitem().validate_for_indexing()
+    sobj.get_subitem().validate_for_indexing()
 
     # Create a new item
     now = timenow()
@@ -177,15 +183,14 @@ def create_item(sobj, index=None, source=None, real=False):
     item = ApiPool.bdl.model.Item(**sobj_json)
     model_to_item(item)
 
-    item.set_item_id()
-
     item.index = index
     item.real = real
     item.source = source
     item.date_created = now
     item.date_last_check = now
     item.count_views = 0
-    item.is_sold = False
+
+    item.set_item_id()
 
     # Make totally sure test items don't make it into live indexes
     if item.source == 'TEST':

@@ -55,91 +55,18 @@ class BDLTests(PyMacaronTestCase):
                     )
 
 
-    def _call_announce_process(self, *announces):
-        """Post one or more announces for processing"""
+    def process_items(self, *objects):
+        """Post one or more scraped objects for processing"""
         self.assertPostReturnOk(
-            'v1/announces/process',
+            'v1/items/process',
             {
                 'index': 'BDL',
                 'source': 'TEST',
                 'real': False,
-                'announces': announces,
+                'objects': objects,
             },
             auth="Bearer %s" % self.token,
         )
-
-
-    def process_sold_announce(self, native_url=None):
-        """Post one sold announce with the given native_url"""
-        if not native_url:
-            native_url = self.native_test_url1
-        self._call_announce_process({
-            'is_sold': True,
-            'native_url': native_url,
-        })
-
-
-    def process_incomplete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK'):
-        """Post an announce for sale but incomplete, with the given native_url"""
-        if not native_url:
-            native_url = self.native_test_url1
-        self._call_announce_process({
-            'is_sold': False,
-            'is_complete': False,
-            'native_url': native_url,
-            'title': title,
-            'price': price,
-            'currency': currency,
-        })
-
-
-    def process_complete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', description='barfoo', native_picture_url='boo', language=None):
-        """Post an announce for sale with complete data, with the given native_url"""
-        if not native_url:
-            native_url = self.native_test_url1
-
-        data = {
-            'is_sold': False,
-            'is_complete': True,
-            'native_url': native_url,
-            'title': title,
-            'price': price,
-            'currency': currency,
-            'description': description,
-            'native_picture_url': native_picture_url,
-            'country': 'SE',
-        }
-
-        if language:
-            data['language'] = language
-
-        self._call_announce_process(data)
-
-
-    def create_item(self, native_url=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
-        if not native_url:
-            native_url = self.native_test_url1
-        self._call_announce_process({
-            'is_complete': True,
-            'is_sold': False,
-            'language': 'en',
-            'index': 'BDL',
-            'real': False,
-            'source': 'TEST',
-            'title': 'This is a test title',
-            'description': 'A nice louis vuitton bag',
-            'country': country,
-            'price': price,
-            'currency': currency,
-            'price_is_fixed': price_is_fixed,
-            'native_url': native_url,
-            'native_picture_url': 'bob',
-        })
-
-        j = self.get_item(native_url=native_url)
-        log.debug("Created item: %s" % json.dumps(j, indent=4))
-        self.assertIsItem(j)
-        return j
 
 
     def get_item(self, native_url=None):
@@ -148,40 +75,25 @@ class BDLTests(PyMacaronTestCase):
             item = get_item_by_native_url(native_url)
             if not item:
                 return None
-            return ApiPool.bdl.model_to_json(item)
+            j = ApiPool.bdl.model_to_json(item)
+            log.debug("Got item by native_url=%s: %s" % (native_url, json.dumps(j, indent=4)))
+            return j
         else:
             assert 0, 'Not implemented'
 
 
-    def assertIsItem(self, j, is_sold=False):
-        required = [
-            'item_id', 'index', 'title', 'description', 'country', 'price',
-            'price_is_fixed', 'currency', 'native_url', 'real',
-            'searchable_string',
-            'date_created', 'date_last_check',
-            'count_views',
-            'display_priority',
-            'tags', 'picture_tags',
-            'picture_url', 'picture_url_w400', 'picture_url_w600',
-        ]
+    def get_es_item(self, item_id, index='BDL', real=True):
+        index_name = None
+        doc_type = None
+        if index == 'BDL':
+            index_name = 'bdlitems-live' if real else 'bdlitems-test'
+            doc_type = 'BDL_ITEM'
+        assert doc_type, "Don't know doc_type for index %s" % index
 
-        for k in required:
-            self.assertTrue(k in j, "Item has no attribute %s" % k)
-
-        if is_sold:
-            self.assertEqual(j['is_sold'], True)
-            self.assertTrue(j['date_sold'])
-        else:
-            self.assertEqual(j['is_sold'], False)
-            self.assertTrue('date_sold' not in j)
-
-
-    def get_es_item(self, item_id, real=True):
-        index_name = 'items-live' if real else 'items-test'
         try:
             doc = get_es().get(
                 index=index_name,
-                doc_type='ITEM_FOR_SALE',
+                doc_type=doc_type,
                 id=item_id,
             )
             log.info("Found elasticsearch document: %s" % json.dumps(doc, indent=4))
@@ -193,6 +105,7 @@ class BDLTests(PyMacaronTestCase):
 
     def assertIsInES(self, item_id, real=True):
         j = self.get_es_item(item_id, real=real)
+        assert j, "Failed to find item %s in ES" % item_id
         self.assertEqual(j['item_id'], item_id)
 
     def assertIsNotInES(self, item_id, real=True):
@@ -210,3 +123,115 @@ class BDLTests(PyMacaronTestCase):
 
     def assertIsNotInItemArchive(self, item_id):
         self.assertTrue('Item' not in PersistentArchivedItem.get_table().get_item(Key={'item_id': item_id}))
+
+
+    #
+    # Specific to BDL
+    #
+
+    def process_sold_announce(self, native_url=None):
+        """Post one sold announce with the given native_url"""
+        if not native_url:
+            native_url = self.native_test_url1
+        self.process_items({
+            'is_complete': False,
+            'native_url': native_url,
+            'bdlitem': {
+                'is_sold': True,
+            }
+        })
+
+
+    def process_incomplete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK'):
+        """Post an announce for sale but incomplete, with the given native_url"""
+        if not native_url:
+            native_url = self.native_test_url1
+        self.process_items({
+            'is_complete': False,
+            'native_url': native_url,
+            'bdlitem': {
+                'is_sold': False,
+                'title': title,
+                'price': price,
+                'currency': currency,
+            },
+        })
+
+
+    def process_complete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', description='barfoo', native_picture_url='boo', language=None):
+        """Post an announce for sale with complete data, with the given native_url"""
+        if not native_url:
+            native_url = self.native_test_url1
+
+        data = {
+            'is_complete': True,
+            'native_url': native_url,
+            'bdlitem': {
+                'is_sold': False,
+                'title': title,
+                'price': price,
+                'currency': currency,
+                'description': description,
+                'native_picture_url': native_picture_url,
+                'country': 'SE',
+            },
+        }
+
+        if language:
+            data['bdlitem']['language'] = language
+
+        self.process_items(data)
+
+
+    def create_bdl_item(self, native_url=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
+        if not native_url:
+            native_url = self.native_test_url1
+        self.process_items({
+            'is_complete': True,
+            'native_url': native_url,
+            'bdlitem': {
+                'is_sold': False,
+                'language': 'en',
+                'index': 'BDL',
+                'title': 'This is a test title',
+                'description': 'A nice louis vuitton bag',
+                'country': country,
+                'price': price,
+                'currency': currency,
+                'price_is_fixed': price_is_fixed,
+                'native_picture_url': 'bob',
+            },
+        })
+
+        j = self.get_item(native_url=native_url)
+        log.debug("Created item: %s" % json.dumps(j, indent=4))
+        self.assertIsItem(j, index='BDL')
+        return j
+
+
+    def assertIsItem(self, j, index='BDL', is_sold=False):
+        required = [
+            'item_id', 'index', 'slug', 'native_url', 'real',
+            'searchable_string', 'date_created', 'date_last_check',
+            'count_views', 'display_priority'
+        ]
+
+        for k in required:
+            self.assertTrue(k in j, "Item has no attribute %s" % k)
+
+        if index == 'BDL':
+            required = [
+                'title', 'description', 'country', 'price',
+                'price_is_fixed', 'currency',
+                'tags', 'picture_tags',
+                'picture_url', 'picture_url_w400', 'picture_url_w600',
+            ]
+            for k in required:
+                self.assertTrue(k in j['bdlitem'], "Item has no attribute %s" % k)
+
+            if is_sold:
+                self.assertEqual(j['bdlitem']['is_sold'], True)
+                self.assertTrue(j['bdlitem']['date_sold'])
+            else:
+                self.assertEqual(j['bdlitem']['is_sold'], False)
+                self.assertTrue('date_sold' not in j['bdlitem'])
