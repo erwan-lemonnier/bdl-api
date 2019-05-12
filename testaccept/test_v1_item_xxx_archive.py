@@ -38,14 +38,14 @@ class Tests(common.BDLTests):
             self.assertTrue(msg in j['error_description'])
 
 
-    def test_v1_item_xxx_archive(self):
+    def test_v1_item_xxx_archive__bdl(self):
         self.cleanup()
 
         # Item is nowehere to be seen
         self.assertEqual(get_item_by_native_url(self.native_test_url1), None)
         # TODO: search for native_test_url1 in ES and make sure we get no hit
 
-        j = self.create_item(native_url=self.native_test_url1)
+        j = self.create_bdl_item(native_url=self.native_test_url1)
         item_id = j['item_id']
 
         self.assertIsInItemTable(item_id)
@@ -77,10 +77,10 @@ class Tests(common.BDLTests):
         self.assertEqual(jj, j)
 
 
-    def test_v1_item_xxx_archive__with_price(self):
+    def test_v1_item_xxx_archive__bdl__with_price(self):
         self.cleanup()
 
-        j0 = self.create_item(native_url=self.native_test_url1)
+        j0 = self.create_bdl_item(native_url=self.native_test_url1)
         item_id = j0['item_id']
 
         # Now archive that item and check that we can still retrieve it
@@ -102,7 +102,7 @@ class Tests(common.BDLTests):
         self.assertIsItem(j2, is_sold=True)
 
         j0['count_views'] = j0['count_views'] + 1
-        j0['is_sold'] = True
-        j0['date_sold'] = j2['date_sold']
-        j0['price_sold'] = 300
+        j0['bdlitem']['is_sold'] = True
+        j0['bdlitem']['date_sold'] = j2['bdlitem']['date_sold']
+        j0['bdlitem']['price_sold'] = 300
         self.assertEqual(j2, j0)

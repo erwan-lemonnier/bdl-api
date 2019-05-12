@@ -122,6 +122,7 @@ class Item():
             self.item_id,
         )
 
+
     def update(self, newsubitem):
         self.get_subitem().update(self, newsubitem)
 

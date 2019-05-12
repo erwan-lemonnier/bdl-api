@@ -192,7 +192,6 @@ class BDLTests(PyMacaronTestCase):
             'bdlitem': {
                 'is_sold': False,
                 'language': 'en',
-                'index': 'BDL',
                 'title': 'This is a test title',
                 'description': 'A nice louis vuitton bag',
                 'country': country,
