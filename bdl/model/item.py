@@ -1,6 +1,6 @@
 import logging
 import json
-from copy import deepcopy
+import dateutil.parser
 from uuid import uuid4
 from pymacaron_core.swagger.apipool import ApiPool
 from pymacaron.utils import to_epoch, timenow
@@ -102,6 +102,13 @@ class Item():
         archiveditem = ApiPool.bdl.model.ArchivedItem(
             **ApiPool.bdl.model_to_json(self)
         )
+        model_to_item(archiveditem)
+
+        # BUG: the above transformation looses the encoding of datetimes
+        # A proper fix would be to use: ApiPool.bdl.json_to_model('ArchivedItem', ApiPool.bdl.model_to_json(self))
+        # but that breaks database persistence (save_to_db() is not monkey patched...)
+        archiveditem.date_created = dateutil.parser.parse(archiveditem.date_created)
+        archiveditem.date_last_check = dateutil.parser.parse(archiveditem.date_last_check)
         archiveditem.save_to_db()
 
         # Remove from dynamodb

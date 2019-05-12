@@ -97,9 +97,9 @@ class Tests(common.BDLTests):
         self.process_sold_announce(native_url=url)
         jj = self.get_item(native_url=url)
 
-        self.assertTrue(jj['date_sold'])
+        self.assertTrue(jj['bdlitem']['date_sold'])
         j['bdlitem']['is_sold'] = True
-        j['bdlitem']['date_sold'] = jj['date_sold']
+        j['bdlitem']['date_sold'] = jj['bdlitem']['date_sold']
         self.assertEqual(jj, j)
 
         self.assertIsNotInES(j['item_id'], real=False)
