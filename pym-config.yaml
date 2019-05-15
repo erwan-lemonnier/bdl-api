@@ -18,7 +18,7 @@ jwt_issuer: api.bazardelux.com
 jwt_secret: BDL_JWT_SECRET
 jwt_audience: BDL_JWT_AUDIENCE
 
-live_host: bazardelux.com
+live_host: api.bazardelux.com
 
 with_async: true
 
