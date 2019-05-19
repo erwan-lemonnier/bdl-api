@@ -275,8 +275,19 @@ class BDLItem():
 
         text = self.get_text()
 
+        # If no language is specified, use amazon comprehend to identify the
+        # announce's language. We need the language to match against keyword
+        # lists
+        if not self.language:
+            self.identify_language()
+            log.info("Identified announce's language: %s [%s]" % (self.language, str(self)))
+
         if skip_sold and self.seems_sold():
             return False
+
+        # TODO: check if we have already parsed and rejected this announce
+        # earlier on by matching native_url against a cache of recently
+        # rejected native_urls
 
         if BLACKLIST_ALL.match(text, self.language):
             log.debug("Announce fails global blacklist check")
@@ -333,13 +344,6 @@ class BDLItem():
             item.archive()
             return 'SKIP'
 
-        # If no language is specified, use amazon comprehend to identify the
-        # announce's language. We need the language to match against keyword
-        # lists
-        if not self.language:
-            self.identify_language()
-            log.info("Identified announce's language: %s [%s]" % (self.language, str(self)))
-
         # If the announce is incompletely parsed, we may want to schedule it
         # for complete parsing
         if not is_complete:
@@ -355,7 +359,7 @@ class BDLItem():
                 log.info("Announce passed 1st curation - Queuing it up [%s]" % str(self))
                 return 'SCRAPE'
 
-        # This announce has all the data we can ever scraped. This is
+        # This announce has all the data we can ever scrape. This is
         # the real deal: is it going to pass thorough curation?
 
         if not self.pass_curator():
