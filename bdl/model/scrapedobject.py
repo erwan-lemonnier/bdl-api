@@ -2,15 +2,11 @@ import logging
 from pymacaron_core.swagger.apipool import ApiPool
 from bdl.exceptions import InvalidDataError
 from bdl.utils import mixin
-from bdl.io.sqs import send_message
 from bdl.model.bdlitem import model_to_bdlitem
 from bdl.model.item import create_item
 
 
 log = logging.getLogger(__name__)
-
-
-QUEUE_NAME = 'announces-to-parse'
 
 
 def model_to_scraped_object(o):
@@ -64,18 +60,33 @@ class ScrapedObject():
         )
 
 
-    def queue_up(self, source=None):
+    def queue_for_scraping(self, source=None):
         """Queue up this announce to be completely parsed later on"""
         log.info("Queuing up announce '%s' for deep scraping" % str(self))
-        task = self.to_scraper_task(source)
-        send_message(
-            QUEUE_NAME,
-            ApiPool.bdl.model_to_json(task),
+
+        assert source
+
+        # Post an url scraping task to the BDL scraper where it will be queued
+        # up for later processing
+        log.info("Posting scrape request to BDL scraper for %s" % self.native_url)
+        ApiPool.scraper.client.scrape_page(
+            ApiPool.scraper.model.ScrapeSettings(
+                source=source,
+                native_url=self.native_url,
+            )
         )
 
 
     def process(self, index=None, source=None, real=None):
-        """Process this scraped object"""
+        """Process this scraped object. Call the subitem's process() method and expect
+        one of 3 possible commands back:
+
+        - SKIP: ignore this object
+        - INDEX: index it into elasticsearch
+        - SCRAPE: re-scrape it
+
+        """
+
         assert index is not None
         assert real in (True, False)
         assert source is not None
@@ -85,10 +96,10 @@ class ScrapedObject():
             native_url=self.native_url,
             is_complete=self.is_complete,
         )
-        assert action in ('SKIP', 'INDEX', 'QUEUE')
+        assert action in ('SKIP', 'INDEX', 'SCRAPE')
 
-        if action == 'QUEUE':
-            self.queue_up(source=source)
+        if action == 'SCRAPE':
+            self.queue_for_scraping(source=source)
 
         elif action == 'INDEX':
             item = create_item(
@@ -97,4 +108,7 @@ class ScrapedObject():
                 real=real,
                 source=source,
             )
-            log.info("New Item has item_id=%s" % item.item_id)
+            log.info("Created new Item with item_id=%s" % item.item_id)
+
+        elif action == 'SKIP':
+            log.info("Skipping %s" % self.native_url)

@@ -47,10 +47,6 @@ class Item():
             return self.topmodel
 
 
-    # def get_text(self):
-    #     return self.get_subitem().get_text()
-
-
     def set_item_id(self):
         """Find an item_id that is not already taken"""
 

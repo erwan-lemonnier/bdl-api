@@ -353,7 +353,7 @@ class BDLItem():
                 return 'SKIP'
             else:
                 log.info("Announce passed 1st curation - Queuing it up [%s]" % str(self))
-                return 'QUEUE'
+                return 'SCRAPE'
 
         # This announce has all the data we can ever scraped. This is
         # the real deal: is it going to pass thorough curation?
