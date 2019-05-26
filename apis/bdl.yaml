@@ -1,4 +1,4 @@
-# This is a swagger description of the certificate service
+# This is a swagger description of the Bazardelux API
 
 swagger: '2.0'
 info:
@@ -11,7 +11,7 @@ info:
     # OpenAPI Specification
 
     The OpenAPI specification (aka Swagger specification) for the Bazardelux
-    API is available [here](http://api.bazardelux.com/doc/bdl.yaml).
+    API is available [here](https://api.bazardelux.com/docs/bdl.yaml).
 
     # Authentication
 
@@ -482,9 +482,15 @@ definitions:
     additionalProperties: true
 
 
+  ScrapedTopModel:
+    type: object
+    description: Scraped profile of a top model.
+    additionalProperties: true
+
+
   BDLItem:
     type: object
-    description: Scraped data describing an item for sale on a p2p marketplace.
+    description: Data describing an item for sale on a p2p marketplace.
     properties:
       title:
         type: string
@@ -572,6 +578,70 @@ definitions:
       - is_sold
 
 
+  ScrapedBDLItem:
+    type: object
+    description: Scraped data describing an item for sale on a p2p marketplace.
+    properties:
+      title:
+        type: string
+        description: Item title.
+      description:
+        type: string
+        description: Main description of the item.
+      price:
+        type: number
+        format: amount
+        description: Price asked for this item.
+      price_is_fixed:
+        type: boolean
+        description: True if item has a fixed price, false if is an auction
+      currency:
+        type: string
+        format: currency
+        description: The currency of all item prices.
+      is_sold:
+        type: boolean
+        description: Whether this item is still for sale or not.
+      price_sold:
+        type: number
+        format: amount
+        description: (Optional) Price paid for this item, if it is sold and a price was available.
+      date_sold:
+        type: string
+        format: date-time
+        description: (Optional) Date at which this item was marked as sold.
+      epoch_published:
+        type: string
+        description: (Optional) When this announce was published.
+      native_doc_id:
+        type: string
+        description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
+      native_seller_id:
+        type: string
+        description: (Optional) The seller ID of the original announce in its marketplace (Facebook owner ID)
+      native_seller_name:
+        type: string
+        description: (Optional) The seller name.
+      native_seller_is_shop:
+        type: boolean
+        description: (Optional) True if the owner is a shop, false if is a private person.
+      native_group_id:
+        type: string
+        description: (Optional) ID of facebook group where this item is.
+      native_location:
+        type: string
+        description: (Optional) Item location as presented on the original marketplace.
+      native_external_url:
+        type: string
+        description: (Optional) Link to original announce (outside Facebook, for example)
+      native_picture_url:
+        type: string
+        description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
+    required:
+      - is_sold
+
+
+
   ArchiveReason:
     type: object
     description: Why is this item being archived?
@@ -615,6 +685,12 @@ definitions:
       real:
         type: boolean
         description: True if those objects are real (default), false if not (test data).
+      epoch_youngest:
+        description: Start scanning at first announce earlier than that epoch.
+        type: number
+      epoch_oldest:
+        description: End scanning at first announce earlier than that epoch.
+        type: number
       objects:
         type: array
         description: A list of scrapped objects.
@@ -641,10 +717,10 @@ definitions:
         description: (Optional) Extra data provided by the scraper The scraper/marketplace to use for scraping.
       bdlitem:
         description: (Optional) Data describing an item for sale on bazardelux.
-        $ref: '#/definitions/BDLItem'
+        $ref: '#/definitions/ScrapedBDLItem'
       topmodel:
         description: (Optional) Data describing a top model.
-        $ref: '#/definitions/TopModel'
+        $ref: '#/definitions/ScrapedTopModel'
     required:
       - is_complete
       - native_url
