@@ -322,6 +322,14 @@ definitions:
         type: string
         format: currency
         description: The currency of all item prices.
+      language:
+        type: string
+        format: language
+        description: The language of the text part of this item.
+      country:
+        type: string
+        format: country_code
+        description: Country where this item is/was sold.
       is_sold:
         type: boolean
         description: Whether this item is still for sale or not.

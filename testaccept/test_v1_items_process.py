@@ -69,7 +69,7 @@ class Tests(common.BDLTests):
             self.assertPostReturnOk(
                 'v1/items/process',
                 {
-                    'source': 'TEST',
+                    'source': source,
                     'index': 'BDL',
                     'objects': [],
                 },
@@ -134,6 +134,7 @@ class Tests(common.BDLTests):
     def test_v1_items_process__bdl__incomplete_announce__accepted(self):
         # TODO: load one announce with only limited data that pass the curator. Check that it enters the scraper queue
         pass
+
 
     def test_v1_items_process__bdl__complete_announce__accepted(self):
         self.cleanup()
