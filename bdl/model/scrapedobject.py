@@ -79,11 +79,14 @@ class ScrapedObject():
 
     def process(self, index=None, source=None, real=None):
         """Process this scraped object. Call the subitem's process() method and expect
-        one of 3 possible commands back:
+        one of 5 possible commands back, and optionally an item upon which to
+        act:
 
         - SKIP: ignore this object
-        - INDEX: index it into elasticsearch
-        - SCRAPE: re-scrape it
+        - INDEX: create an item for this object and index it into elasticsearch
+        - SCRAPE: re-scrape this object
+        - UPDATE: update an existing item with the scraped object's subitem
+        - ARCHIVE: archive the found item
 
         """
 
@@ -92,14 +95,27 @@ class ScrapedObject():
         assert source is not None
 
         subitem = self.get_subitem()
-        action = subitem.process(
+        action, item = subitem.process(
             native_url=self.native_url,
             is_complete=self.is_complete,
         )
-        assert action in ('SKIP', 'INDEX', 'SCRAPE')
+
+        assert action in ('SKIP', 'INDEX', 'UPDATE', 'SCRAPE', 'ARCHIVE')
+        item_id = item.item_id if item else None
+
+        log.info("Performing ACTION: %s (item_id=%s)" % (action, item_id))
 
         if action == 'SCRAPE':
             self.queue_for_scraping(source=source)
+
+        elif action == 'ARCHIVE':
+            assert item, "Got action ARCHIVE but no item for %s" % str(self)
+            item.archive()
+
+        elif action == 'UPDATE':
+            assert item, "Got action UPDATE but no item for %s" % str(self)
+            log.info("BOOM?")
+            item.update(self.get_subitem())
 
         elif action == 'INDEX':
             item = create_item(
@@ -112,3 +128,8 @@ class ScrapedObject():
 
         elif action == 'SKIP':
             log.info("Skipping %s" % self.native_url)
+
+        else:
+            assert 0, "Huh? Don't know what to do with action %s" % action
+
+        return action, item_id

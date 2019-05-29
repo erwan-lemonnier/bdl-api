@@ -105,7 +105,7 @@ class Item():
         # but that breaks database persistence (save_to_db() is not monkey patched...)
         archiveditem.date_created = dateutil.parser.parse(archiveditem.date_created)
         archiveditem.date_last_check = dateutil.parser.parse(archiveditem.date_last_check)
-        archiveditem.save_to_db()
+        archiveditem.save_to_db(async=False)
 
         # Remove from dynamodb
         table = get_dynamodb().Table('items')
@@ -120,7 +120,9 @@ class Item():
 
 
     def update(self, newsubitem):
+        log.debug("Updating and saving item %s" % self.item_id)
         self.get_subitem().update(self, newsubitem)
+        self.save_to_db(async=False)
 
 
 class IndexableItem():

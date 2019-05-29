@@ -1,4 +1,5 @@
 import logging
+from pymacaron_async import asynctask
 from pymacaron_core.swagger.apipool import ApiPool
 from bdl.exceptions import IndexNotSupportedError
 from bdl.db.item import get_item
@@ -15,6 +16,7 @@ def do_process_items(data):
 
     """
 
+    # Validate input data
     if data.index and data.index != 'BDL':
         raise IndexNotSupportedError(data.index)
 
@@ -28,17 +30,49 @@ def do_process_items(data):
 
         log.info('Looking at scraped object %s' % str(o.native_url))
         model_to_scraped_object(o)
-
-
         o.validate_for_processing()
 
-        o.process(
-            index=data.index,
-            source=data.source,
-            real=data.real,
+    # Process objects, asynchronously or not
+    synchronous = True if data.synchronous is True else False
+
+    jsons = [ApiPool.bdl.model_to_json(o) for o in data.objects]
+
+    if synchronous:
+        return process_items(data.index, data.source, data.real, *jsons)
+    else:
+        async_process_items(data.index, data.source, data.real, *jsons)
+        return ApiPool.bdl.model.ProcessResults(results=[])
+
+
+@asynctask()
+def async_process_items(index, source, real, *jsons):
+    process_items(index, source, real, *jsons)
+
+
+def process_items(index, source, real, *jsons):
+
+    results = ApiPool.bdl.model.ProcessResults(results=[])
+    for j in jsons:
+
+        o = ApiPool.bdl.json_to_model('ScrapedObject', j)
+        model_to_scraped_object(o)
+
+        log.info('Looking at scraped object %s' % str(o.native_url))
+
+        action, item_id = o.process(
+            index=index,
+            source=source,
+            real=real,
         )
 
-    return ApiPool.bdl.model.Ok()
+        results.results.append(
+            ApiPool.bdl.model.ProcessResult(
+                action=action,
+                item_id=item_id,
+            )
+        )
+
+    return results
 
 
 def do_get_item(item_id):

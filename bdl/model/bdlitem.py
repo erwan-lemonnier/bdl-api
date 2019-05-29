@@ -337,12 +337,11 @@ class BDLItem():
 
             if not item:
                 log.info("There is NO item based on this announce - Ignoring it")
-                return 'SKIP'
+                return 'SKIP', None
 
             log.info("Found item %s based on this announce - Archiving it" % item.item_id)
             item.get_subitem().mark_as_sold()
-            item.archive()
-            return 'SKIP'
+            return 'ARCHIVE', item
 
         # If the announce is incompletely parsed, we may want to schedule it
         # for complete parsing
@@ -354,17 +353,17 @@ class BDLItem():
 
             if not self.pass_curator(ignore_whitelist=True):
                 log.info("Announce failed 1st curation - Skipping it [%s]" % str(self))
-                return 'SKIP'
+                return 'SKIP', None
             else:
                 log.info("Announce passed 1st curation - Queuing it up [%s]" % str(self))
-                return 'SCRAPE'
+                return 'SCRAPE', None
 
         # This announce has all the data we can ever scrape. This is
         # the real deal: is it going to pass thorough curation?
 
         if not self.pass_curator():
             log.info("Announce failed deep curation - Skipping it [%s]" % str(self))
-            return 'SKIP'
+            return 'SKIP', None
 
         log.info("Announce passed deep curation [%s]" % str(self))
 
@@ -372,9 +371,8 @@ class BDLItem():
         item = get_item_by_native_url(native_url)
         if item:
             log.info("Announce is already indexed as item %s [%s]" % (item.item_id, str(self)))
-            item.update(self)
-            return 'SKIP'
+            return 'UPDATE', item
 
         # There is no item associated with this announce: create one!
         log.info("Creating new Item for announce [%s]" % str(self))
-        return 'INDEX'
+        return 'INDEX', None

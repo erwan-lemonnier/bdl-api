@@ -229,6 +229,7 @@ definitions:
       - native_url
       - source
 
+
   ScrapedObjects:
     type: object
     description: Data from one of more scraped pages, to be processed.
@@ -254,17 +255,14 @@ definitions:
       real:
         type: boolean
         description: True if those objects are real (default), false if not (test data).
-      epoch_youngest:
-        description: Start scanning at first announce earlier than that epoch.
-        type: number
-      epoch_oldest:
-        description: End scanning at first announce earlier than that epoch.
-        type: number
       objects:
         type: array
         description: A list of scrapped objects.
         items:
           $ref: '#/definitions/ScrapedObject'
+      synchronous:
+        type: boolean
+        description: By default, items are processed asynchronously in the background, but if synchronous is True, the call waits for all items to be processed and returns a result for each item.
     required:
       - source
       - index

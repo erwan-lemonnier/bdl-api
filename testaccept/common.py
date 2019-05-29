@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+from time import sleep
 from pymacaron.test import PyMacaronTestCase
 from pymacaron_core.swagger.apipool import ApiPool
 from elasticsearch import exceptions
@@ -55,29 +56,47 @@ class BDLTests(PyMacaronTestCase):
                     )
 
 
-    def process_items(self, *objects):
+    def process_items(self, *objects, **kwargs):
         """Post one or more scraped objects for processing"""
-        self.assertPostReturnOk(
+        data = {
+            'index': 'BDL',
+            'source': kwargs.get('source', 'TEST'),
+            'real': False,
+            'objects': objects,
+        }
+        synchronous = True if kwargs.get('synchronous', False) else False
+        if synchronous:
+            data['synchronous'] = True
+
+        j = self.assertPostReturnJson(
             'v1/items/process',
-            {
-                'index': 'BDL',
-                'source': 'TEST',
-                'real': False,
-                'objects': objects,
-            },
+            data,
             auth="Bearer %s" % self.token,
         )
+        if not synchronous:
+            self.assertEqual(j, {'results': []})
+        return j
 
 
-    def get_item(self, native_url=None):
+    def get_item_or_timeout(self, native_url=None):
         """Return an item as json, given its native_url. Or None"""
         if native_url:
-            item = get_item_by_native_url(native_url)
-            if not item:
-                return None
-            j = ApiPool.bdl.model_to_json(item)
-            log.debug("Got item by native_url=%s: %s" % (native_url, json.dumps(j, indent=4)))
-            return j
+            count = 0
+            while True:
+                item = get_item_by_native_url(native_url)
+
+                if item:
+                    j = ApiPool.bdl.model_to_json(item)
+                    log.debug("Got item by native_url=%s: %s" % (native_url, json.dumps(j, indent=4)))
+                    return j
+
+                if count > 10:
+                    log.debug("Failed to find item with native_url=%s" % native_url)
+                    return None
+
+                count = count + 1
+                sleep(1)
+
         else:
             assert 0, 'Not implemented'
 
@@ -103,8 +122,23 @@ class BDLTests(PyMacaronTestCase):
             return None
 
 
+    def get_es_item_or_timeout(self, item_id, index='BDL', real=True):
+        count = 0
+        while True:
+            i = self.get_es_item(item_id, index=index, real=real)
+            if i:
+                return i
+
+            if count > 10:
+                log.debug("Failed to find item with item_id=%s" % item_id)
+                return None
+
+            count = count + 1
+            sleep(1)
+
+
     def assertIsInES(self, item_id, real=True):
-        j = self.get_es_item(item_id, real=real)
+        j = self.get_es_item_or_timeout(item_id, real=real)
         assert j, "Failed to find item %s in ES" % item_id
         self.assertEqual(j['item_id'], item_id)
 
@@ -130,36 +164,42 @@ class BDLTests(PyMacaronTestCase):
     #
 
 
-    def process_sold_announce(self, native_url=None):
+    def process_sold_announce(self, native_url=None, synchronous=None):
         """Post one sold announce with the given native_url"""
         if not native_url:
             native_url = self.native_test_url1
-        self.process_items({
-            'is_complete': False,
-            'native_url': native_url,
-            'bdlitem': {
-                'is_sold': True,
-            }
-        })
+        return self.process_items(
+            {
+                'is_complete': False,
+                'native_url': native_url,
+                'bdlitem': {
+                    'is_sold': True,
+                }
+            },
+            synchronous=synchronous,
+        )
 
 
-    def process_incomplete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK'):
+    def process_incomplete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', synchronous=None):
         """Post an announce for sale but incomplete, with the given native_url"""
         if not native_url:
             native_url = self.native_test_url1
-        self.process_items({
-            'is_complete': False,
-            'native_url': native_url,
-            'bdlitem': {
-                'is_sold': False,
-                'title': title,
-                'price': price,
-                'currency': currency,
+        return self.process_items(
+            {
+                'is_complete': False,
+                'native_url': native_url,
+                'bdlitem': {
+                    'is_sold': False,
+                    'title': title,
+                    'price': price,
+                    'currency': currency,
+                },
             },
-        })
+            synchronous=synchronous,
+        )
 
 
-    def process_complete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', description='barfoo', native_picture_url='boo', language=None):
+    def process_complete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', description='barfoo', native_picture_url='boo', language=None, synchronous=None):
         """Post an announce for sale with complete data, with the given native_url"""
         if not native_url:
             native_url = self.native_test_url1
@@ -181,7 +221,7 @@ class BDLTests(PyMacaronTestCase):
         if language:
             data['bdlitem']['language'] = language
 
-        self.process_items(data)
+        return self.process_items(data, synchronous=synchronous)
 
 
     def create_bdl_item(self, native_url=None, price=1000, currency='SEK', country='SE', price_is_fixed=False):
@@ -203,7 +243,7 @@ class BDLTests(PyMacaronTestCase):
             },
         })
 
-        j = self.get_item(native_url=native_url)
+        j = self.get_item_or_timeout(native_url=native_url)
         log.debug("Created item: %s" % json.dumps(j, indent=4))
         self.assertIsItem(j, index='BDL')
         return j

@@ -158,6 +158,12 @@ paths:
           'native_picture_url'. It can also have all the other optional
           attributes of a complete BDLItem object.
 
+        By default, processing happens asynchronously, in the background, and
+        an empty results array is returned. But if 'synchronous' is True in the
+        request, the scraped objects will be processed synchronously and an
+        array of results returned showing the action taken for every scraped
+        object and optionally the item_id of the affected item.
+
       parameters:
         - in: body
           name: body
@@ -178,7 +184,7 @@ paths:
         '200':
           description: Ok
           schema:
-            $ref: '#/definitions/Ok'
+            $ref: '#/definitions/ProcessResults'
         default:
           description: Error
           schema:
@@ -693,17 +699,14 @@ definitions:
       real:
         type: boolean
         description: True if those objects are real (default), false if not (test data).
-      epoch_youngest:
-        description: Start scanning at first announce earlier than that epoch.
-        type: number
-      epoch_oldest:
-        description: End scanning at first announce earlier than that epoch.
-        type: number
       objects:
         type: array
         description: A list of scrapped objects.
         items:
           $ref: '#/definitions/ScrapedObject'
+      synchronous:
+        type: boolean
+        description: By default, items are processed asynchronously in the background, but if synchronous is True, the call waits for all items to be processed and returns a result for each item.
     required:
       - source
       - index
@@ -732,6 +735,39 @@ definitions:
     required:
       - is_complete
       - native_url
+
+
+  ProcessResults:
+    type: object
+    description: A list of code representing actions taken for every provided object. Only if processing synchronously.
+    properties:
+      results:
+        type: array
+        description: Result for every processed item, in the same order.
+        items:
+          $ref: '#/definitions/ProcessResult'
+    required:
+      - results
+
+
+  ProcessResult:
+    type: object
+    description: What was done with the scraped object at the corresponding index.
+    properties:
+      action:
+        type: string
+        description: Whether that object was skipped, indexed or schedule for further scraping.
+        enum:
+          - SKIP
+          - INDEX
+          - SCRAPE
+          - UPDATE
+          - ARCHIVE
+      item_id:
+        type: string
+        description: Item ID if an item was indexed
+    required:
+      - action
 
 
   ScraperTasks:

@@ -66,7 +66,7 @@ class Tests(common.BDLTests):
         ]
 
         for source in sources:
-            self.assertPostReturnOk(
+            j = self.assertPostReturnJson(
                 'v1/items/process',
                 {
                     'source': source,
@@ -75,6 +75,7 @@ class Tests(common.BDLTests):
                 },
                 auth='Bearer %s' % self.token,
             )
+            self.assertEqual(j, {'results': []})
 
 
     def test_v1_items_process__bdl__sold_announce(self):
@@ -83,20 +84,22 @@ class Tests(common.BDLTests):
         self.assertEqual(get_item_by_native_url(url), None)
 
         # First, no announce exists - No item gets archived
-        self.process_sold_announce(native_url=url)
-        self.assertEqual(get_item_by_native_url(url), None)
+        r = self.process_sold_announce(native_url=url, synchronous=True)
+        self.assertEqual(r, {'results': [{'action': 'SKIP'}]})
 
         # Create that item
         j = self.create_bdl_item(native_url=url)
+        item_id = j['item_id']
         self.assertEqual(j['bdlitem']['is_sold'], False)
         self.assertTrue('date_sold' not in j['bdlitem'])
         self.assertTrue('price_sold' not in j['bdlitem'])
-        self.assertIsInES(j['item_id'], real=False)
+        self.assertIsInES(item_id, real=False)
 
         # Now process that announce as sold, again
-        self.process_sold_announce(native_url=url)
-        jj = self.get_item(native_url=url)
+        r = self.process_sold_announce(native_url=url, synchronous=True)
+        self.assertEqual(r, {'results': [{'action': 'ARCHIVE', 'item_id': item_id}]})
 
+        jj = self.get_item_or_timeout(native_url=url)
         self.assertTrue(jj['bdlitem']['date_sold'])
         j['bdlitem']['is_sold'] = True
         j['bdlitem']['date_sold'] = jj['bdlitem']['date_sold']
@@ -110,12 +113,21 @@ class Tests(common.BDLTests):
         url = self.native_test_url1
 
         # Announce with a title that fails first curation
-        self.process_incomplete_announce(native_url=url, title='wont match anything')
-        self.assertEqual(get_item_by_native_url(url), None)
+        r = self.process_incomplete_announce(
+            native_url=url,
+            title='ikea totally sucks',
+            synchronous=True,
+        )
+        self.assertEqual(r, {'results': [{'action': 'SKIP'}]})
 
         # Announce with a price that fails first curation
-        self.process_incomplete_announce(native_url=url, title='louis vuitton', price=0)
-        self.assertEqual(get_item_by_native_url(url), None)
+        r = self.process_incomplete_announce(
+            native_url=url,
+            title='louis vuitton',
+            price=0,
+            synchronous=True,
+        )
+        self.assertEqual(r, {'results': [{'action': 'SKIP'}]})
 
 
     def test_v1_items_process__bdl__complete_announce__rejected(self):
@@ -123,17 +135,43 @@ class Tests(common.BDLTests):
         url = self.native_test_url1
 
         # Announce with a title that fails deep curation, with no language to force an amazon comprehend call
-        self.process_complete_announce(native_url=url, title='wont match anything', description='nothing to match', price=1234)
-        self.assertEqual(get_item_by_native_url(url), None)
+        r = self.process_complete_announce(
+            native_url=url,
+            title='wont match anything',
+            description='nothing to match',
+            price=1234,
+            synchronous=True,
+        )
+        self.assertEqual(r, {'results': [{'action': 'SKIP'}]})
 
         # Same, but set a language
-        self.process_complete_announce(native_url=url, title='wont match anything', description='nothing to match', price=1234, language='en')
-        self.assertEqual(get_item_by_native_url(url), None)
+        r = self.process_complete_announce(
+            native_url=url,
+            title='wont match anything',
+            description='nothing to match',
+            price=1234,
+            language='en',
+            synchronous=True,
+        )
+        self.assertEqual(r, {'results': [{'action': 'SKIP'}]})
 
 
     def test_v1_items_process__bdl__incomplete_announce__accepted(self):
-        # TODO: load one announce with only limited data that pass the curator. Check that it enters the scraper queue
-        pass
+        self.cleanup()
+        url = self.native_test_url1
+
+        # Using a TEST BDL announce, that will be sent to the BDL scraper for
+        # scraping and ignored there
+        r = self.process_incomplete_announce(
+            native_url=url,
+            title='Louis Vuitton Speedy väska',
+            price=2000,
+            currency='SEK',
+            synchronous=True,
+        )
+
+        # Check that the announce was queued up for scraping
+        self.assertEqual(r, {'results': [{'action': 'SCRAPE'}]})
 
 
     def test_v1_items_process__bdl__complete_announce__accepted(self):
@@ -141,15 +179,23 @@ class Tests(common.BDLTests):
         url = self.native_test_url1
 
         # This announce is complete and passes curation
-        self.process_complete_announce(native_url=url, title='louis vuitton', description='nice bag', price=1000)
-        j = self.get_item(native_url=url)
+        self.process_complete_announce(
+            native_url=url,
+            title='louis vuitton',
+            description='nice bag',
+            price=1000,
+        )
+
+        # Make sure it really was indexed
+        j = self.get_item_or_timeout(native_url=url)
+        item_id = j['item_id']
         self.assertEqual(j, {
             'count_views': 0,
             'date_created': j['date_created'],
             'date_last_check': j['date_created'],
             'display_priority': 1,
             'index': 'BDL',
-            'item_id': j['item_id'],
+            'item_id': item_id,
             'native_url': 'https://bdl.com/test1',
             'real': False,
             'searchable_string': j['searchable_string'],
@@ -174,8 +220,27 @@ class Tests(common.BDLTests):
         })
 
         # Send the announce again, but change price. Check that the item got updated
-        self.process_complete_announce(native_url=url, title='louis vuitton', description='nice bag', price=800)
-        jj = self.get_item(native_url=url)
+        r = self.process_complete_announce(
+            native_url=url,
+            title='louis vuitton',
+            description='nice bag',
+            price=800,
+            synchronous=True,
+        )
+
+        self.assertEqual(
+            r,
+            {
+                "results": [
+                    {
+                        "action": "UPDATE",
+                        "item_id": item_id,
+                    }
+                ]
+            }
+        )
+
+        jj = self.get_item_or_timeout(native_url=url)
         j['bdlitem']['price'] = 800
         j['slug'] = 'louis-vuitton_800_SEK__%s' % j['item_id']
         self.assertEqual(jj, j)
