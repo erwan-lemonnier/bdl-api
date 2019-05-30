@@ -32,6 +32,7 @@ error_definitions = [
     ('ES_ITEM_NOT_FOUND', 404, 'ESItemNotFoundError', lambda s: s),
     ('ITEM_NOT_FOUND', 404, 'ItemNotFoundError', lambda s: "Item %s is not in the database" % s),
     ('INDEX_NOT_SUPPORTED', 400, 'IndexNotSupportedError', lambda s: "BUG: cannot store announces targeting unknown index %s" % s),
+    ('API_CALL_ERROR', 500, 'ApiCallError', lambda s: s),
 ]
 
 

@@ -1,6 +1,8 @@
 import logging
 from pymacaron_core.swagger.apipool import ApiPool
+from pymacaron.exceptions import is_error
 from bdl.exceptions import InvalidDataError
+from bdl.exceptions import ApiCallError
 from bdl.utils import mixin
 from bdl.model.bdlitem import model_to_bdlitem
 from bdl.model.item import create_item
@@ -69,12 +71,14 @@ class ScrapedObject():
         # Post an url scraping task to the BDL scraper where it will be queued
         # up for later processing
         log.info("Posting scrape request to BDL scraper for %s" % self.native_url)
-        ApiPool.scraper.client.scrape_page(
+        r = ApiPool.scraper.client.scrape_page(
             ApiPool.scraper.model.ScrapeSettings(
                 source=source,
                 native_url=self.native_url,
             )
         )
+        if is_error(r):
+            raise ApiCallError("%s caused: %s" % (self.native_url, r.error_description))
 
 
     def process(self, index=None, source=None, real=None):
