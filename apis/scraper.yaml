@@ -340,7 +340,7 @@ definitions:
         format: date-time
         description: (Optional) Date at which this item was marked as sold.
       epoch_published:
-        type: string
+        type: number
         description: (Optional) When this announce was published.
       native_doc_id:
         type: string
