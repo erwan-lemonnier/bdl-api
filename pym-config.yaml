@@ -25,6 +25,8 @@ with_async: true
 slack_url: https://hooks.slack.com/services/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
 slack_api_channel: _api
 
+email_error_to: erwan-bdl@lemonnier.se
+
 es_search_host: search-bazardelux-hndzw4wbz4sdddwtte5zyqc25a.eu-central-1.es.amazonaws.com
 
 env_secrets:
