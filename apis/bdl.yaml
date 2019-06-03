@@ -147,10 +147,10 @@ paths:
         set depending on what the scraped data is telling:
 
         * The ScrapedObject of a BDL item that has been sold must only have the
-          attributes 'native_url' and 'is_sold' (set to True).
+          attributes 'native_url' and 'has_ended' (set to True).
 
         * The ScrapedObject of a BDL item that is incompletely parsed must have
-          the attributes 'native_url', 'is_sold' (set to False), 'is_complete'
+          the attributes 'native_url', 'has_ended' (set to False), 'is_complete'
           (set to False), 'title', 'price' and 'currency'.
 
         * The ScrapedObject of a BDL item that is completely scraped must have
@@ -275,7 +275,7 @@ paths:
           verify if the announce if still for sale (in which case the parser
           does not need to scrape and process the announce again), or if it has
           been sold (or removed), in which case the announce should be
-          processed again with the is_sold attribute set to True.
+          processed again with the has_ended attribute set to True.
 
         * goal='SCRAP_URL': return urls of pages that need to be completely
           scraped, and sent back for processing with the 'is_complete'
@@ -545,9 +545,16 @@ definitions:
         description: An array of string tags applied to that item''s picture
         items:
           type: string
-      is_sold:
+      has_ended:
         type: boolean
         description: Whether this item is still for sale or not.
+      date_ended:
+        type: string
+        format: date-time
+        description: (Optional) Date at which this item was removed from sale.
+      is_sold:
+        type: boolean
+        description: (Optional) True is we know that this item has been sold.
       price_sold:
         type: number
         format: amount
@@ -555,7 +562,7 @@ definitions:
       date_sold:
         type: string
         format: date-time
-        description: (Optional) Date at which this item was marked as sold.
+        description: (Optional) Date at which this item was sold.
       native_doc_id:
         type: string
         description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
@@ -581,7 +588,7 @@ definitions:
         type: string
         description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
     required:
-      - is_sold
+      - has_ended
 
 
   ScrapedBDLItem:
@@ -613,9 +620,16 @@ definitions:
         type: string
         format: country_code
         description: Country where this item is/was sold.
-      is_sold:
+      has_ended:
         type: boolean
         description: Whether this item is still for sale or not.
+      date_ended:
+        type: string
+        format: date-time
+        description: (Optional) Date at which this item was removed from sale.
+      is_sold:
+        type: boolean
+        description: True is we know that this item has been sold.
       price_sold:
         type: number
         format: amount
@@ -623,7 +637,7 @@ definitions:
       date_sold:
         type: string
         format: date-time
-        description: (Optional) Date at which this item was marked as sold.
+        description: (Optional) Date at which this item was sold.
       epoch_published:
         type: number
         description: (Optional) When this announce was published.
@@ -650,10 +664,9 @@ definitions:
         description: (Optional) Link to original announce (outside Facebook, for example)
       native_picture_url:
         type: string
-        description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
+        description: (Optional) URL to the item''s picture on the marketplace it was scraped from.
     required:
-      - is_sold
-
+      - has_ended
 
 
   ArchiveReason:
@@ -664,12 +677,24 @@ definitions:
         type: string
         description: Reason why the item is being archived
         enum:
+          - ENDED
           - SOLD
           - REMOVED
+      date_ended:
+        type: string
+        format: date-time
+        description: (Optional) Date at which this item was removed from sale.
+      is_sold:
+        type: boolean
+        description: (Optional) True is we know that this item has been sold.
       price_sold:
         type: number
         format: amount
         description: (Optional) Price paid for this item, if it is sold and a price was available.
+      date_sold:
+        type: string
+        format: date-time
+        description: (Optional) Date at which this item was sold.
     required:
       - reason
 

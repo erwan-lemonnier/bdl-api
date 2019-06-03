@@ -68,11 +68,11 @@ class ScrapedObject():
 
         assert source
 
-        # Post an url scraping task to the BDL scraper where it will be queued
+        # Post an url scraping task to the BDL crawler where it will be queued
         # up for later processing
-        log.info("Posting scrape request to BDL scraper for %s" % self.native_url)
-        r = ApiPool.scraper.client.scrape_page(
-            ApiPool.scraper.model.ScrapeSettings(
+        log.info("Posting scrape request to BDL crawler for %s" % self.native_url)
+        r = ApiPool.crawler.client.scrape_page(
+            ApiPool.crawler.model.ScrapeSettings(
                 source=source,
                 native_url=self.native_url,
             )
@@ -114,11 +114,11 @@ class ScrapedObject():
 
         elif action == 'ARCHIVE':
             assert item, "Got action ARCHIVE but no item for %s" % str(self)
+            item.get_subitem().mark_as_ended(self.get_subitem())
             item.archive()
 
         elif action == 'UPDATE':
             assert item, "Got action UPDATE but no item for %s" % str(self)
-            log.info("BOOM?")
             item.update(self.get_subitem())
 
         elif action == 'INDEX':

@@ -1,18 +1,18 @@
-# This is a swagger description of the Bazardelux Scraper API
+# This is a swagger description of the Bazardelux Crawler API
 
 swagger: '2.0'
 info:
-  title: Bazardelux Scraper API
+  title: Bazardelux Crawler API
   version: "0.0.1"
   description: |
 
-    This is the Bazardelux Scraper API.
+    This is the Bazardelux Crawler API.
 
     # OpenAPI Specification
 
     The OpenAPI specification (aka Swagger specification) for the Bazardelux
-    Scraper API is available
-    [here](https://scraper.bazardelux.com/docs/scraper.yaml).
+    Crawler API is available
+    [here](https://scraper.bazardelux.com/docs/crawler.yaml).
 
     # Authentication
 
@@ -61,7 +61,7 @@ info:
     All dates are expressed in the form 'YYYY-MM-DD', as in '2016-10-16'.
 
 
-host: scraper.bazardelux.com
+host: crawler.bazardelux.com
 schemes:
   - https
 basePath: /v1
@@ -69,7 +69,7 @@ produces:
   - application/json
 paths:
 
-  /v1/scraper/scan:
+  /v1/crawler/scan:
     post:
       summary: Scan a website's listing page for objects.
       description:
@@ -78,7 +78,7 @@ paths:
         Found announces are queued up while waiting to be retrieved with
         'v1/results'.
 
-        The scraper will scan a segment of pages within an interval of
+        The crawler will scan a segment of pages within an interval of
         publication time, scanned backward in time, with the first announce
         having the most recent publication date (epoch_youngest), and the last
         announce being the oldest (epoch_oldest).
@@ -111,10 +111,10 @@ paths:
             $ref: "#/definitions/ScanSettings"
 
       tags:
-        - Scraper
+        - Crawler
       produces:
         - application/json
-      x-bind-server: scraper.api.do_scan_source
+      x-bind-server: crawler.api.do_scan_source
       x-bind-client: scan_source
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
@@ -129,7 +129,7 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/scraper/scrape:
+  /v1/crawler/scrape:
     post:
       summary: Scrape a specific page.
       description:
@@ -152,13 +152,52 @@ paths:
         - Scraper
       produces:
         - application/json
-      x-bind-server: scraper.api.do_scrape_source
+      x-bind-server: crawler.api.do_scrape_source
       x-bind-client: scrape_page
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
       responses:
         '200':
           description: Matching items
+          schema:
+            $ref: '#/definitions/ScrapedObjects'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  /v1/crawler/search:
+    post:
+      summary: Search a website for matching objects.
+      description:
+
+        Use a source website's built-in search to generate a listing of
+        matching objects and scrape them. Limit scraping to a small number
+        of objects, 5 by default.
+
+        The search is synchronous, and will return only when all found items
+        are scraped.
+
+      parameters:
+        - in: body
+          name: body
+          description: How to search this source.
+          required: true
+          schema:
+            $ref: "#/definitions/SearchSettings"
+
+      tags:
+        - Crawler
+      produces:
+        - application/json
+      x-bind-server: crawler.api.do_search_source
+      x-bind-client: search_source
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Matching items, or none
           schema:
             $ref: '#/definitions/ScrapedObjects'
         default:
@@ -228,6 +267,35 @@ definitions:
     required:
       - native_url
       - source
+
+
+  SearchSettings:
+    type: object
+    description: A search query to apply on a website.
+    properties:
+      source:
+        type: string
+        description: The searched website.
+        enum:
+          - BLOCKET
+          - TRADERA
+          - TEST
+      query:
+        type: string
+        description: A text query to pass directly to the source''s search input.
+      limit_count:
+        description: (Optional) Fetch only the first limit_count matching items (Default 5).
+        type: number
+      scraper_data:
+        type: string
+        description: (Optional) Extra data provided by the scraper, as a json string.
+      synchronous:
+        description: If false (default), scrape asynchronously in the background and return no objects. If true, scrape synchronously and return the scraped data.
+        type: boolean
+    required:
+      - source
+      - query
+      - synchronous
 
 
   ScrapedObjects:
@@ -328,9 +396,16 @@ definitions:
         type: string
         format: country_code
         description: Country where this item is/was sold.
-      is_sold:
+      has_ended:
         type: boolean
         description: Whether this item is still for sale or not.
+      date_ended:
+        type: string
+        format: date-time
+        description: (Optional) Date at which this item was removed from sale.
+      is_sold:
+        type: boolean
+        description: True is we know that this item has been sold.
       price_sold:
         type: number
         format: amount
@@ -338,7 +413,7 @@ definitions:
       date_sold:
         type: string
         format: date-time
-        description: (Optional) Date at which this item was marked as sold.
+        description: (Optional) Date at which this item was sold.
       epoch_published:
         type: number
         description: (Optional) When this announce was published.
@@ -365,9 +440,9 @@ definitions:
         description: (Optional) Link to original announce (outside Facebook, for example)
       native_picture_url:
         type: string
-        description: (Optional) URL to the item''s picture on the marketplace it was scrapped from.
+        description: (Optional) URL to the item''s picture on the marketplace it was scraped from.
     required:
-      - is_sold
+      - has_ended
 
 
   #

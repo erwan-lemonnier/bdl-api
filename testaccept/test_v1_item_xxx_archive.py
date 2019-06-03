@@ -60,7 +60,7 @@ class Tests(common.BDLTests):
             },
             auth="Bearer %s" % self.token,
         )
-        self.assertIsItem(j, is_sold=True)
+        self.assertIsItem(j, has_ended=True)
 
         self.assertIsNotInItemTable(item_id)
         self.assertIsInItemArchive(item_id)
@@ -71,7 +71,7 @@ class Tests(common.BDLTests):
             'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
-        self.assertIsItem(jj, is_sold=True)
+        self.assertIsItem(jj, has_ended=True)
 
         j['count_views'] = j['count_views'] + 1
         self.assertEqual(jj, j)
@@ -88,20 +88,23 @@ class Tests(common.BDLTests):
             'v1/item/%s/archive' % item_id,
             {
                 'reason': 'SOLD',
+                'is_sold': True,
                 'price_sold': 300,
             },
             auth="Bearer %s" % self.token,
         )
-        self.assertIsItem(j1, is_sold=True)
+        self.assertIsItem(j1, has_ended=True)
 
         # We can still get it
         j2 = self.assertGetReturnJson(
             'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
-        self.assertIsItem(j2, is_sold=True)
+        self.assertIsItem(j2, has_ended=True)
 
         j0['count_views'] = j0['count_views'] + 1
+        j0['bdlitem']['has_ended'] = True
+        j0['bdlitem']['date_ended'] = j2['bdlitem']['date_ended']
         j0['bdlitem']['is_sold'] = True
         j0['bdlitem']['date_sold'] = j2['bdlitem']['date_sold']
         j0['bdlitem']['price_sold'] = 300

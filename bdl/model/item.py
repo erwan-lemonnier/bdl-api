@@ -91,7 +91,7 @@ class Item():
         """Move this item from the items table into the items-archived table, and remove
         it from elasticsearch"""
 
-        assert self.bdlitem.is_sold, "Only sold BDL items may be archived"
+        assert self.bdlitem.has_ended, "Only ended BDL items may be archived"
 
         log.debug("Archiving item %s (%s)" % (self.item_id, self.slug))
 
@@ -117,6 +117,8 @@ class Item():
             self.get_es_doc_type(),
             self.item_id,
         )
+
+        return archiveditem
 
 
     def update(self, newsubitem):

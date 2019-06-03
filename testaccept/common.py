@@ -173,7 +173,25 @@ class BDLTests(PyMacaronTestCase):
                 'is_complete': False,
                 'native_url': native_url,
                 'bdlitem': {
+                    'has_ended': True,
                     'is_sold': True,
+                    'price_sold': 100,
+                }
+            },
+            synchronous=synchronous,
+        )
+
+
+    def process_ended_announce(self, native_url=None, synchronous=None):
+        """Post one ended announce with the given native_url"""
+        if not native_url:
+            native_url = self.native_test_url1
+        return self.process_items(
+            {
+                'is_complete': False,
+                'native_url': native_url,
+                'bdlitem': {
+                    'has_ended': True,
                 }
             },
             synchronous=synchronous,
@@ -189,7 +207,7 @@ class BDLTests(PyMacaronTestCase):
                 'is_complete': False,
                 'native_url': native_url,
                 'bdlitem': {
-                    'is_sold': False,
+                    'has_ended': False,
                     'title': title,
                     'price': price,
                     'currency': currency,
@@ -208,7 +226,7 @@ class BDLTests(PyMacaronTestCase):
             'is_complete': True,
             'native_url': native_url,
             'bdlitem': {
-                'is_sold': False,
+                'has_ended': False,
                 'title': title,
                 'price': price,
                 'currency': currency,
@@ -231,7 +249,7 @@ class BDLTests(PyMacaronTestCase):
             'is_complete': True,
             'native_url': native_url,
             'bdlitem': {
-                'is_sold': False,
+                'has_ended': False,
                 'language': 'en',
                 'title': 'This is a test title',
                 'description': 'A nice louis vuitton bag',
@@ -249,7 +267,7 @@ class BDLTests(PyMacaronTestCase):
         return j
 
 
-    def assertIsItem(self, j, index='BDL', is_sold=False):
+    def assertIsItem(self, j, index='BDL', has_ended=False):
         required = [
             'item_id', 'index', 'slug', 'native_url', 'real',
             'searchable_string', 'date_created', 'date_last_check',
@@ -269,9 +287,9 @@ class BDLTests(PyMacaronTestCase):
             for k in required:
                 self.assertTrue(k in j['bdlitem'], "Item has no attribute %s" % k)
 
-            if is_sold:
-                self.assertEqual(j['bdlitem']['is_sold'], True)
-                self.assertTrue(j['bdlitem']['date_sold'])
+            if has_ended:
+                self.assertEqual(j['bdlitem']['has_ended'], True)
+                self.assertTrue(j['bdlitem']['date_ended'])
             else:
-                self.assertEqual(j['bdlitem']['is_sold'], False)
+                self.assertEqual(j['bdlitem']['has_ended'], False)
                 self.assertTrue('date_sold' not in j['bdlitem'])

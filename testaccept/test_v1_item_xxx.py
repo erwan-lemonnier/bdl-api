@@ -51,7 +51,7 @@ class Tests(common.BDLTests):
                     'currency': 'SEK',
                     'description': 'A nice louis vuitton bag',
                     'language': 'en',
-                    'is_sold': False,
+                    'has_ended': False,
                     'native_picture_url': 'bob',
                     'picture_url': 'bob',
                     'picture_url_w400': 'bob',
@@ -89,12 +89,15 @@ class Tests(common.BDLTests):
             'v1/item/%s/archive' % item_id,
             {
                 'reason': 'SOLD',
+                'is_sold': True,
             },
             auth="Bearer %s" % self.token,
         )
-        self.assertIsItem(j2, is_sold=True)
+        self.assertIsItem(j2, has_ended=True)
+        j0['bdlitem']['has_ended'] = True
         j0['bdlitem']['is_sold'] = True
-        j0['bdlitem']['date_sold'] = j2['bdlitem']['date_sold']
+        j0['bdlitem']['date_sold'] = j2['bdlitem']['date_ended']
+        j0['bdlitem']['date_ended'] = j2['bdlitem']['date_ended']
         self.assertEqual(j2, j0)
 
         # We can still get it
@@ -102,7 +105,7 @@ class Tests(common.BDLTests):
             'v1/item/%s' % item_id,
             auth="Bearer %s" % self.token,
         )
-        self.assertIsItem(j3, is_sold=True)
+        self.assertIsItem(j3, has_ended=True)
 
         j0['count_views'] = 3
         self.assertEqual(j3, j0)

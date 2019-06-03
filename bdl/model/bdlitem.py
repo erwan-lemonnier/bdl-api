@@ -48,7 +48,7 @@ class BDLItem():
         assert native_url
         assert is_complete in (True, False)
         required = []
-        if not self.is_sold:
+        if not self.has_ended:
             required = required + ['title', 'price', 'currency']
         if is_complete:
             required = required + ['description', 'native_picture_url', 'country']
@@ -176,16 +176,29 @@ class BDLItem():
         return 1
 
 
-    def mark_as_sold(self):
-        log.info("Marking BDLItem as sold: %s" % self)
-        self.is_sold = True
-        self.date_sold = timenow()
+    def mark_as_ended(self, subitem=None):
+        """Mark an item as ended. Optionally take a scraped object's subitem containing
+        a date_ended, is_sold, price sold and date_sold
+
+        """
+        log.info("Marking BDLItem as ended: %s" % self)
+        self.has_ended = True
+        self.date_ended = timenow()
+
+        if subitem:
+            for a in ['date_ended', 'is_sold', 'price_sold', 'date_sold']:
+                if hasattr(subitem, a) and getattr(subitem, a) is not None:
+                    log.debug("Setting %s = %s" % (a, getattr(subitem, a)))
+                    setattr(self, a, getattr(subitem, a))
+
+        if self.is_sold and not self.date_sold:
+            self.date_sold = self.date_ended
 
 
     def update(self, item, obj):
         """Take an updated scrapedobject for this item and see if anything relevant
         (title, description, price, etc) has changed. If so, update the item
-        and save it
+        and save it.
 
         """
 
@@ -212,7 +225,7 @@ class BDLItem():
         if self.native_picture_url != obj.native_picture_url:
             updated = True
             update_picture = True
-            log.info("Updating picture of Item %s" % self.item_id)
+            log.info("Updating picture of Item %s" % item.item_id)
             self.native_picture_url = obj.native_picture_url
 
         # Re-generate this item
@@ -330,9 +343,9 @@ class BDLItem():
         assert native_url
         assert is_complete in (True, False)
 
-        # If the announce is sold, we need to archive it
-        if self.is_sold:
-            log.info("Announce is sold [%s]" % str(self))
+        # If the announce has ended, we need to archive it
+        if self.has_ended:
+            log.info("Announce has ended [%s]" % str(self))
             item = get_item_by_native_url(native_url)
 
             if not item:
@@ -340,7 +353,8 @@ class BDLItem():
                 return 'SKIP', None
 
             log.info("Found item %s based on this announce - Archiving it" % item.item_id)
-            item.get_subitem().mark_as_sold()
+            item.get_subitem().mark_as_ended()
+            # TODO: set is_sold, price_sold and date_sold if available
             return 'ARCHIVE', item
 
         # If the announce is incompletely parsed, we may want to schedule it

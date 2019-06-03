@@ -32,20 +32,20 @@ class Tests(common.BDLTests):
             [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob'}]}, 400, 'INVALID_PARAMETER', "scraped object has no subitem"],
 
             # BDL item sold
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {}}]}, 400, 'INVALID_PARAMETER', "'is_sold' is a required property"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {}}]}, 400, 'INVALID_PARAMETER', "'has_ended' is a required property"],
 
             # BDL item not sold and incomplete
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {'is_sold': False}}]}, 400, 'INVALID_PARAMETER', "BDL item has no title"],
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {'is_sold': False, 'title': 'foo'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no price"],
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {'is_sold': False, 'title': 'foo', 'price': 100}}]}, 400, 'INVALID_PARAMETER', "BDL item has no currency"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {'has_ended': False}}]}, 400, 'INVALID_PARAMETER', "BDL item has no title"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {'has_ended': False, 'title': 'foo'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no price"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': False, 'native_url': 'bob', 'bdlitem': {'has_ended': False, 'title': 'foo', 'price': 100}}]}, 400, 'INVALID_PARAMETER', "BDL item has no currency"],
 
             # # BDL item not sold and complete
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'is_sold': False}}]}, 400, 'INVALID_PARAMETER', "BDL item has no title"],
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'is_sold': False, 'title': 'foo'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no price"],
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'is_sold': False, 'title': 'foo', 'price': 100}}]}, 400, 'INVALID_PARAMETER', "BDL item has no currency"],
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'is_sold': False, 'title': 'foo', 'price': 100, 'currency': 'SEK'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no description"],
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'is_sold': False, 'title': 'foo', 'price': 100, 'currency': 'SEK', 'description': 'd'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no native_picture_url"],
-            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'is_sold': False, 'title': 'foo', 'price': 100, 'currency': 'SEK', 'description': 'd', 'native_picture_url': 'n'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no country"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'has_ended': False}}]}, 400, 'INVALID_PARAMETER', "BDL item has no title"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'has_ended': False, 'title': 'foo'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no price"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'has_ended': False, 'title': 'foo', 'price': 100}}]}, 400, 'INVALID_PARAMETER', "BDL item has no currency"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'has_ended': False, 'title': 'foo', 'price': 100, 'currency': 'SEK'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no description"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'has_ended': False, 'title': 'foo', 'price': 100, 'currency': 'SEK', 'description': 'd'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no native_picture_url"],
+            [{'source': 'TEST', 'index': 'BDL', 'objects': [{'is_complete': True, 'native_url': 'bob', 'bdlitem': {'has_ended': False, 'title': 'foo', 'price': 100, 'currency': 'SEK', 'description': 'd', 'native_picture_url': 'n'}}]}, 400, 'INVALID_PARAMETER', "BDL item has no country"],
         ]
 
         for data, status, error, msg in tests:
@@ -90,7 +90,8 @@ class Tests(common.BDLTests):
         # Create that item
         j = self.create_bdl_item(native_url=url)
         item_id = j['item_id']
-        self.assertEqual(j['bdlitem']['is_sold'], False)
+        self.assertEqual(j['bdlitem']['has_ended'], False)
+        self.assertTrue('date_ended' not in j['bdlitem'])
         self.assertTrue('date_sold' not in j['bdlitem'])
         self.assertTrue('price_sold' not in j['bdlitem'])
         self.assertIsInES(item_id, real=False)
@@ -100,9 +101,42 @@ class Tests(common.BDLTests):
         self.assertEqual(r, {'results': [{'action': 'ARCHIVE', 'item_id': item_id}]})
 
         jj = self.get_item_or_timeout(native_url=url)
+        self.assertTrue(jj['bdlitem']['date_ended'])
         self.assertTrue(jj['bdlitem']['date_sold'])
+        j['bdlitem']['has_ended'] = True
         j['bdlitem']['is_sold'] = True
-        j['bdlitem']['date_sold'] = jj['bdlitem']['date_sold']
+        j['bdlitem']['price_sold'] = 100
+        j['bdlitem']['date_ended'] = jj['bdlitem']['date_ended']
+        j['bdlitem']['date_sold'] = jj['bdlitem']['date_ended']
+        self.assertEqual(jj, j)
+
+        self.assertIsNotInES(j['item_id'], real=False)
+
+
+    def test_v1_items_process__bdl__ended_announce(self):
+        self.cleanup()
+        url = self.native_test_url1
+        self.assertEqual(get_item_by_native_url(url), None)
+
+        # Create that item
+        j = self.create_bdl_item(native_url=url)
+        item_id = j['item_id']
+        self.assertEqual(j['bdlitem']['has_ended'], False)
+        self.assertTrue('date_ended' not in j['bdlitem'])
+        self.assertTrue('date_sold' not in j['bdlitem'])
+        self.assertTrue('price_sold' not in j['bdlitem'])
+        self.assertIsInES(item_id, real=False)
+
+        # Now process that announce as sold, again
+        r = self.process_ended_announce(native_url=url, synchronous=True)
+        self.assertEqual(r, {'results': [{'action': 'ARCHIVE', 'item_id': item_id}]})
+
+        jj = self.get_item_or_timeout(native_url=url)
+        self.assertTrue(jj['bdlitem']['date_ended'])
+        self.assertTrue('date_sold' not in jj['bdlitem'])
+        self.assertTrue('is_sold' not in jj['bdlitem'])
+        j['bdlitem']['has_ended'] = True
+        j['bdlitem']['date_ended'] = jj['bdlitem']['date_ended']
         self.assertEqual(jj, j)
 
         self.assertIsNotInES(j['item_id'], real=False)
@@ -205,7 +239,7 @@ class Tests(common.BDLTests):
                 'country': 'SE',
                 'currency': 'SEK',
                 'description': 'nice bag',
-                'is_sold': False,
+                'has_ended': False,
                 'language': 'fr',
                 'native_picture_url': 'boo',
                 'picture_tags': [],

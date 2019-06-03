@@ -91,12 +91,17 @@ def do_archive_item(data, item_id=None):
     assert data.reason == 'SOLD', "Archiving reason is %s" % data.reason
 
     item = get_item(item_id)
-    subitem = item.get_subitem()
 
     assert item.index == 'BDL'
-    if data.price_sold:
-        subitem.price_sold = data.price_sold
-    subitem.mark_as_sold()
+    item.get_subitem().mark_as_ended(
+        subitem=ApiPool.bdl.model.ScrapedBDLItem(
+            has_ended=True,
+            date_ended=data.date_ended,
+            is_sold=data.is_sold,
+            price_sold=data.price_sold,
+            date_sold=data.date_sold,
+        )
+    )
     item.archive()
 
     return item
