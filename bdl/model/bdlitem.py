@@ -2,6 +2,8 @@ import logging
 import re
 from unidecode import unidecode
 from pymacaron.utils import timenow
+from s3imageresizer import S3ImageResizer
+from bdl.io.s3 import get_s3_conn
 from bdl.exceptions import InvalidDataError
 from bdl.utils import mixin
 from bdl.utils import cleanup_string
@@ -165,10 +167,45 @@ class BDLItem():
 
     def import_pictures(self):
         """Import the item's pictures and resize them"""
-        # TODO: import item pictures to S3 and resize them
-        self.picture_url = self.native_picture_url
-        self.picture_url_w400 = self.native_picture_url
-        self.picture_url_w600 = self.native_picture_url
+
+        CLOUDFRONT_URL = 'https://img.bazardelux.com'
+        S3_PICTS_BUCKET = 'bdl-pictures'
+
+        i = S3ImageResizer(get_s3_conn())
+
+        # First, upload picture to s3
+        log.info("Fetching picture %s" % self.native_picture_url)
+        i.fetch(self.native_picture_url)
+
+        metadata = {
+            'item_id': self.item_id,
+            'picture_url': self.native_picture_url,
+            'Expires': 'Sun, 03 May 2095 23:02:37 GMT',
+        }
+
+        # Store it to S3
+        log.info("Saving raw picture to S3")
+        i.store(
+            in_bucket=S3_PICTS_BUCKET,
+            key_name='%s.jpg' % self.item_id,
+            metadata=metadata,
+        )
+
+        def resize_and_store(i, width, metadata):
+            key_name = '%s_w%s.jpg' % (self.item_id, width)
+            i.resize(
+                width=width
+            ).store(
+                in_bucket=S3_PICTS_BUCKET,
+                key_name=key_name,
+                metadata=metadata,
+            )
+            return CLOUDFRONT_URL + '/' + key_name
+
+        self.picture_url = '%s/%s.jpg' % (CLOUDFRONT_URL, self.item_id)
+        self.picture_url_w200 = resize_and_store(i, 200, metadata)
+        self.picture_url_w400 = resize_and_store(i, 400, metadata)
+        self.picture_url_w600 = resize_and_store(i, 600, metadata)
 
 
     def get_display_priority(self):

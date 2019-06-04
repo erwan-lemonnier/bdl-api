@@ -83,7 +83,8 @@ class Item():
         subitem.regenerate(update_picture=update_picture)
         self.slug = subitem.get_slug(item_id=self.item_id)
         self.searchable_string = subitem.get_searchable_string(self)
-        self.display_priority = subitem.get_display_priority()
+        if update_picture:
+            self.display_priority = subitem.get_display_priority()
         self.save_to_db(async=async)
 
 
