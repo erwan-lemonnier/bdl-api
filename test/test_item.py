@@ -13,17 +13,17 @@ class Tests(TestCase):
 
     def setUp(self):
         ApiPool.add(
-            'bdl',
-            yaml_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'apis', 'bdl.yaml'),
+            'api',
+            yaml_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'apis', 'api.yaml'),
             formats=get_custom_formats(),
         )
         self.maxDiff = None
 
 
     def test__str__(self):
-        i = ApiPool.bdl.model.Item(
+        i = ApiPool.api.model.Item(
             item_id='tst-1234',
-            bdlitem=ApiPool.bdl.model.BDLItem(),
+            bdlitem=ApiPool.api.model.BDLItem(),
         )
         model_to_item(i)
 
@@ -38,7 +38,7 @@ class Tests(TestCase):
 
 
     def test_set_item_id(self):
-        i = ApiPool.bdl.model.Item()
+        i = ApiPool.api.model.Item()
         model_to_item(i)
 
         i.source = 'TEST'

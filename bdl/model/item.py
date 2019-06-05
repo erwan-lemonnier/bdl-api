@@ -18,7 +18,7 @@ def model_to_item(o):
     if o.bdlitem:
         from bdl.model.bdlitem import model_to_bdlitem
         if type(o.bdlitem) is dict:
-            o.bdlitem = ApiPool.bdl.json_to_model('BDLItem', o.bdlitem)
+            o.bdlitem = ApiPool.api.json_to_model('BDLItem', o.bdlitem)
         model_to_bdlitem(o.bdlitem)
     elif o.topmodel:
         raise Exception('model_to_topmodel not implemented')
@@ -96,13 +96,13 @@ class Item():
 
         log.debug("Archiving item %s (%s)" % (self.item_id, self.slug))
 
-        archiveditem = ApiPool.bdl.model.ArchivedItem(
-            **ApiPool.bdl.model_to_json(self)
+        archiveditem = ApiPool.api.model.ArchivedItem(
+            **ApiPool.api.model_to_json(self)
         )
         model_to_item(archiveditem)
 
         # BUG: the above transformation looses the encoding of datetimes
-        # A proper fix would be to use: ApiPool.bdl.json_to_model('ArchivedItem', ApiPool.bdl.model_to_json(self))
+        # A proper fix would be to use: ApiPool.api.json_to_model('ArchivedItem', ApiPool.api.model_to_json(self))
         # but that breaks database persistence (save_to_db() is not monkey patched...)
         archiveditem.date_created = dateutil.parser.parse(archiveditem.date_created)
         archiveditem.date_last_check = dateutil.parser.parse(archiveditem.date_last_check)
@@ -145,7 +145,7 @@ class IndexableItem():
     def index_to_es(self, async=True):
         """Store this item into Elasticsearch"""
 
-        doc = ApiPool.bdl.model_to_json(self)
+        doc = ApiPool.api.model_to_json(self)
 
         doc['free_search'] = self.searchable_string
         doc['epoch_created'] = to_epoch(self.date_created)
@@ -174,7 +174,7 @@ def create_item(sobj, index=None, source=None, real=False):
     assert source, "source (%s) is defined" % source
     assert real in (True, False), "real (%s) is true or false" % real
 
-    sobj_json = ApiPool.bdl.model_to_json(sobj)
+    sobj_json = ApiPool.api.model_to_json(sobj)
     log.debug("About to generate Item from sobj: %s" % json.dumps(sobj_json, indent=4))
 
     # Make sure this scrapped object contains the minimum amount of data
@@ -190,7 +190,7 @@ def create_item(sobj, index=None, source=None, real=False):
         if k in sobj_json:
             del sobj_json[k]
 
-    item = ApiPool.bdl.model.Item(**sobj_json)
+    item = ApiPool.api.model.Item(**sobj_json)
     model_to_item(item)
 
     item.index = index

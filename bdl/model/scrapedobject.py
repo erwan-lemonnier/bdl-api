@@ -54,7 +54,7 @@ class ScrapedObject():
 
     def to_scraper_task(self, source):
         assert source
-        return ApiPool.bdl.model.ScraperTask(
+        return ApiPool.api.model.ScraperTask(
             goal='SCRAP_URL',
             source=source,
             scraper_data=self.scraper_data,

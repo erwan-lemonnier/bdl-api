@@ -22,6 +22,12 @@ def model_to_bdlitem(o):
     """Take a bravado object and return a UserProfile"""
     mixin(o, BDLItem)
 
+    # Make sure prices are integers
+    if o.price:
+        o.price = int(o.price)
+    if o.price_sold:
+        o.price_sold = int(o.price_sold)
+
     # Monkey patch __str__
     def str(self):
         if not self.title:

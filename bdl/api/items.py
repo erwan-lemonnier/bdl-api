@@ -35,13 +35,13 @@ def do_process_items(data):
     # Process objects, asynchronously or not
     synchronous = True if data.synchronous is True else False
 
-    jsons = [ApiPool.bdl.model_to_json(o) for o in data.objects]
+    jsons = [ApiPool.api.model_to_json(o) for o in data.objects]
 
     if synchronous:
         return process_items(data.index, data.source, data.real, *jsons)
     else:
         async_process_items(data.index, data.source, data.real, *jsons)
-        return ApiPool.bdl.model.ProcessResults(results=[])
+        return ApiPool.api.model.ProcessResults(results=[])
 
 
 @asynctask()
@@ -51,10 +51,10 @@ def async_process_items(index, source, real, *jsons):
 
 def process_items(index, source, real, *jsons):
 
-    results = ApiPool.bdl.model.ProcessResults(results=[])
+    results = ApiPool.api.model.ProcessResults(results=[])
     for j in jsons:
 
-        o = ApiPool.bdl.json_to_model('ScrapedObject', j)
+        o = ApiPool.api.json_to_model('ScrapedObject', j)
         model_to_scraped_object(o)
 
         log.info('Looking at scraped object %s' % str(o.native_url))
@@ -66,7 +66,7 @@ def process_items(index, source, real, *jsons):
         )
 
         results.results.append(
-            ApiPool.bdl.model.ProcessResult(
+            ApiPool.api.model.ProcessResult(
                 action=action,
                 item_id=item_id,
             )
@@ -94,7 +94,7 @@ def do_archive_item(data, item_id=None):
 
     assert item.index == 'BDL'
     item.get_subitem().mark_as_ended(
-        subitem=ApiPool.bdl.model.ScrapedBDLItem(
+        subitem=ApiPool.api.model.ScrapedBDLItem(
             has_ended=True,
             date_ended=data.date_ended,
             is_sold=data.is_sold,

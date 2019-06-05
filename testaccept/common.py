@@ -36,8 +36,8 @@ class BDLTests(PyMacaronTestCase):
 
     def load_api(self):
         ApiPool.add(
-            'bdl',
-            yaml_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'apis', 'bdl.yaml'),
+            'api',
+            yaml_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'apis', 'api.yaml'),
             formats=get_custom_formats(),
         )
 
@@ -88,7 +88,7 @@ class BDLTests(PyMacaronTestCase):
                 item = get_item_by_native_url(native_url)
 
                 if item:
-                    j = ApiPool.bdl.model_to_json(item)
+                    j = ApiPool.api.model_to_json(item)
                     log.debug("Got item by native_url=%s: %s" % (native_url, json.dumps(j, indent=4)))
                     return j
 

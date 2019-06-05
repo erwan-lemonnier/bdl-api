@@ -12,7 +12,7 @@ def store_item(item):
     # REMOVE
     import json
     from pymacaron_core.swagger.apipool import ApiPool
-    log.debug("Storing to DB: %s" % json.dumps(ApiPool.bdl.model_to_json(item), indent=4))
+    log.debug("Storing to DB: %s" % json.dumps(ApiPool.api.model_to_json(item), indent=4))
     # REMOVE
 
     # Duh. Dynamodb does not like floats: convert them to strings...
@@ -40,7 +40,7 @@ def store_item(item):
 
 
 class PersistentItem(PersistentSwaggerObject):
-    api_name = 'bdl'
+    api_name = 'api'
     model_name = 'Item'
     table_name = 'items'
     primary_key = 'item_id'
@@ -53,7 +53,7 @@ class PersistentItem(PersistentSwaggerObject):
 
 
 class PersistentArchivedItem(PersistentSwaggerObject):
-    api_name = 'bdl'
+    api_name = 'api'
     model_name = 'ArchivedItem'
     table_name = 'items-archived'
     primary_key = 'item_id'

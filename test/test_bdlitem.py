@@ -18,15 +18,15 @@ class Tests(TestCase):
 
     def setUp(self):
         ApiPool.add(
-            'bdl',
-            yaml_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'apis', 'bdl.yaml'),
+            'api',
+            yaml_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'apis', 'api.yaml'),
             formats=get_custom_formats(),
         )
         self.maxDiff = None
 
 
     def test_get_slug(self):
-        i = ApiPool.bdl.model.BDLItem()
+        i = ApiPool.api.model.BDLItem()
         model_to_bdlitem(i)
 
         tests = [
@@ -43,7 +43,7 @@ class Tests(TestCase):
 
 
     def test_import_pictures(self):
-        i = ApiPool.bdl.model.BDLItem()
+        i = ApiPool.api.model.BDLItem()
         model_to_bdlitem(i)
 
         item_id = 'test-%s' % str(uuid4()).replace('-', '')[0:10]

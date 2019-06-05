@@ -278,6 +278,9 @@ class Tests(common.BDLTests):
         jj = self.get_item_or_timeout(native_url=url)
         j['bdlitem']['price'] = 800
         j['slug'] = 'louis-vuitton_800_SEK__%s' % j['item_id']
+
+        self.assertTrue(jj['date_last_check'] > j['date_last_check'])
+        j['date_last_check'] = jj['date_last_check']
         self.assertEqual(jj, j)
 
         self.cleanup_pictures(item_id)
