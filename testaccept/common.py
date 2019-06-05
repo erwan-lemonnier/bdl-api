@@ -2,9 +2,11 @@ import logging
 import json
 import os
 from time import sleep
+from boto.s3.key import Key
 from pymacaron.test import PyMacaronTestCase
 from pymacaron_core.swagger.apipool import ApiPool
 from elasticsearch import exceptions
+from bdl.io.s3 import get_s3_conn
 from bdl.formats import get_custom_formats
 from bdl.utils import gen_jwt_token
 from bdl.io.es import get_es
@@ -217,7 +219,7 @@ class BDLTests(PyMacaronTestCase):
         )
 
 
-    def process_complete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', description='barfoo', native_picture_url='boo', language=None, synchronous=None):
+    def process_complete_announce(self, native_url=None, title='foobar', price=1000, currency='SEK', description='barfoo', native_picture_url='https://img.bazardelux.com/cat2.jpg', language=None, synchronous=None):
         """Post an announce for sale with complete data, with the given native_url"""
         if not native_url:
             native_url = self.native_test_url1
@@ -257,7 +259,7 @@ class BDLTests(PyMacaronTestCase):
                 'price': price,
                 'currency': currency,
                 'price_is_fixed': price_is_fixed,
-                'native_picture_url': 'bob',
+                'native_picture_url': 'https://img.bazardelux.com/cat2.jpg',
             },
         })
 
@@ -293,3 +295,19 @@ class BDLTests(PyMacaronTestCase):
             else:
                 self.assertEqual(j['bdlitem']['has_ended'], False)
                 self.assertTrue('date_sold' not in j['bdlitem'])
+
+
+    def cleanup_pictures(self, item_id):
+
+        # Cleanup
+        bucket = get_s3_conn().get_bucket('bdl-pictures')
+
+        def delete_key(name):
+            k = Key(bucket)
+            k.key = name
+            bucket.delete_key(k)
+
+        delete_key('%s.jpg' % item_id)
+        delete_key('%s_w200.jpg' % item_id)
+        delete_key('%s_w400.jpg' % item_id)
+        delete_key('%s_w600.jpg' % item_id)

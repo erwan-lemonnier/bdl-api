@@ -157,16 +157,19 @@ class BDLItem():
         return s
 
 
-    def regenerate(self, update_picture=False):
+    def regenerate(self, item_id=None, update_picture=False):
         """Regenerate attributes after an update or being created"""
+        assert item_id
         self.set_tags()
         if update_picture:
-            self.import_pictures()
+            self.import_pictures(item_id=item_id)
             self.set_picture_tags()
 
 
-    def import_pictures(self):
+    def import_pictures(self, item_id=None):
         """Import the item's pictures and resize them"""
+
+        assert item_id
 
         CLOUDFRONT_URL = 'https://img.bazardelux.com'
         S3_PICTS_BUCKET = 'bdl-pictures'
@@ -178,7 +181,7 @@ class BDLItem():
         i.fetch(self.native_picture_url)
 
         metadata = {
-            'item_id': self.item_id,
+            'item_id': item_id,
             'picture_url': self.native_picture_url,
             'Expires': 'Sun, 03 May 2095 23:02:37 GMT',
         }
@@ -187,12 +190,12 @@ class BDLItem():
         log.info("Saving raw picture to S3")
         i.store(
             in_bucket=S3_PICTS_BUCKET,
-            key_name='%s.jpg' % self.item_id,
+            key_name='%s.jpg' % item_id,
             metadata=metadata,
         )
 
         def resize_and_store(i, width, metadata):
-            key_name = '%s_w%s.jpg' % (self.item_id, width)
+            key_name = '%s_w%s.jpg' % (item_id, width)
             i.resize(
                 width=width
             ).store(
@@ -202,7 +205,7 @@ class BDLItem():
             )
             return CLOUDFRONT_URL + '/' + key_name
 
-        self.picture_url = '%s/%s.jpg' % (CLOUDFRONT_URL, self.item_id)
+        self.picture_url = '%s/%s.jpg' % (CLOUDFRONT_URL, item_id)
         self.picture_url_w200 = resize_and_store(i, 200, metadata)
         self.picture_url_w400 = resize_and_store(i, 400, metadata)
         self.picture_url_w600 = resize_and_store(i, 600, metadata)

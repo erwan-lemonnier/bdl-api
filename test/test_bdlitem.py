@@ -1,12 +1,14 @@
 import os
+import imp
 import logging
 from uuid import uuid4
-from boto.s3.key import Key
 from pymacaron_core.swagger.apipool import ApiPool
 from bdl.model.bdlitem import model_to_bdlitem
 from bdl.formats import get_custom_formats
-from bdl.io.s3 import get_s3_conn
 from unittest import TestCase
+
+
+common = imp.load_source('common', os.path.join(os.path.dirname(__file__), '..', 'testaccept', 'common.py'))
 
 
 log = logging.getLogger(__name__)
@@ -44,25 +46,14 @@ class Tests(TestCase):
         i = ApiPool.bdl.model.BDLItem()
         model_to_bdlitem(i)
 
-        i.item_id = 'test-%s' % str(uuid4()).replace('-', '')[0:10]
+        item_id = 'test-%s' % str(uuid4()).replace('-', '')[0:10]
         i.native_picture_url = 'https://img.bazardelux.com/cat2.jpg'
 
-        i.import_pictures()
+        i.import_pictures(item_id)
 
-        self.assertEqual(i.picture_url, 'https://img.bazardelux.com/%s.jpg' % i.item_id)
-        self.assertEqual(i.picture_url_w200, 'https://img.bazardelux.com/%s_w200.jpg' % i.item_id)
-        self.assertEqual(i.picture_url_w400, 'https://img.bazardelux.com/%s_w400.jpg' % i.item_id)
-        self.assertEqual(i.picture_url_w600, 'https://img.bazardelux.com/%s_w600.jpg' % i.item_id)
+        self.assertEqual(i.picture_url, 'https://img.bazardelux.com/%s.jpg' % item_id)
+        self.assertEqual(i.picture_url_w200, 'https://img.bazardelux.com/%s_w200.jpg' % item_id)
+        self.assertEqual(i.picture_url_w400, 'https://img.bazardelux.com/%s_w400.jpg' % item_id)
+        self.assertEqual(i.picture_url_w600, 'https://img.bazardelux.com/%s_w600.jpg' % item_id)
 
-        # Cleanup
-        bucket = get_s3_conn().get_bucket('bdl-pictures')
-
-        def delete_key(name):
-            k = Key(bucket)
-            k.key = name
-            bucket.delete_key(k)
-
-        delete_key('%s.jpg' % i.item_id)
-        delete_key('%s_w200.jpg' % i.item_id)
-        delete_key('%s_w400.jpg' % i.item_id)
-        delete_key('%s_w600.jpg' % i.item_id)
+        common.BDLTests().cleanup_pictures(item_id)

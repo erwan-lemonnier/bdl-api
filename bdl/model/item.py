@@ -80,7 +80,7 @@ class Item():
 
         log.info("Re-generating all non-static item attributes")
         subitem = self.get_subitem()
-        subitem.regenerate(update_picture=update_picture)
+        subitem.regenerate(item_id=self.item_id, update_picture=update_picture)
         self.slug = subitem.get_slug(item_id=self.item_id)
         self.searchable_string = subitem.get_searchable_string(self)
         if update_picture:

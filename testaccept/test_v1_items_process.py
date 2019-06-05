@@ -241,11 +241,12 @@ class Tests(common.BDLTests):
                 'description': 'nice bag',
                 'has_ended': False,
                 'language': 'fr',
-                'native_picture_url': 'boo',
+                'native_picture_url': 'https://img.bazardelux.com/cat2.jpg',
+                'picture_url': 'https://img.bazardelux.com/%s.jpg' % item_id,
+                'picture_url_w200': 'https://img.bazardelux.com/%s_w200.jpg' % item_id,
+                'picture_url_w400': 'https://img.bazardelux.com/%s_w400.jpg' % item_id,
+                'picture_url_w600': 'https://img.bazardelux.com/%s_w600.jpg' % item_id,
                 'picture_tags': [],
-                'picture_url': 'boo',
-                'picture_url_w400': 'boo',
-                'picture_url_w600': 'boo',
                 'price': 1000.0,
                 'price_is_fixed': False,
                 'tags': j['bdlitem']['tags'],
@@ -278,3 +279,5 @@ class Tests(common.BDLTests):
         j['bdlitem']['price'] = 800
         j['slug'] = 'louis-vuitton_800_SEK__%s' % j['item_id']
         self.assertEqual(jj, j)
+
+        self.cleanup_pictures(item_id)

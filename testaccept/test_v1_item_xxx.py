@@ -52,10 +52,11 @@ class Tests(common.BDLTests):
                     'description': 'A nice louis vuitton bag',
                     'language': 'en',
                     'has_ended': False,
-                    'native_picture_url': 'bob',
-                    'picture_url': 'bob',
-                    'picture_url_w400': 'bob',
-                    'picture_url_w600': 'bob',
+                    'native_picture_url': 'https://img.bazardelux.com/cat2.jpg',
+                    'picture_url': 'https://img.bazardelux.com/%s.jpg' % item_id,
+                    'picture_url_w200': 'https://img.bazardelux.com/%s_w200.jpg' % item_id,
+                    'picture_url_w400': 'https://img.bazardelux.com/%s_w400.jpg' % item_id,
+                    'picture_url_w600': 'https://img.bazardelux.com/%s_w600.jpg' % item_id,
                     'price': 1000.0,
                     'price_is_fixed': False,
                     'tags': [
@@ -109,3 +110,5 @@ class Tests(common.BDLTests):
 
         j0['count_views'] = 3
         self.assertEqual(j3, j0)
+
+        self.cleanup_pictures(item_id)
