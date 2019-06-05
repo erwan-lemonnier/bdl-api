@@ -125,6 +125,7 @@ class Item():
     def update(self, newsubitem):
         log.debug("Updating and saving item %s" % self.item_id)
         self.get_subitem().update(self, newsubitem)
+        self.date_last_check = timenow()
         self.save_to_db(async=False)
 
 
