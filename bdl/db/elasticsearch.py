@@ -101,7 +101,7 @@ def es_get_doc(index_name, doc_type, uid):
 # Search index
 #
 
-def es_search_index(index_name, doc_type, sort, query, page, item_per_page):
+def es_search_index(index_name=None, doc_type=None, sort=[], query=None, page=None, item_per_page=None):
     """Search the elasticsearch index and return hits"""
 
     if not page:

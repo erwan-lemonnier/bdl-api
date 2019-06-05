@@ -1,66 +1,103 @@
 import logging
+from urllib.parse import quote_plus
+from pymacaron_core.swagger.apipool import ApiPool
+from bdl.exceptions import InternalServerError
+from bdl.model.item import model_to_item
+from bdl.db.elasticsearch import es_search_index, es_delete_doc
 
 
 log = logging.getLogger(__name__)
 
 
-def do_search_items(query, page=0, real=None, country=None, domain=None):
-    # TODO: implement search endpoint
-    pass
+def do_search_items(query=None, page=0, page_size=None, real=None, location=None, index=None):
 
-    # real = boolstr_to_bool(real, True)
-    # item_per_page = 50
+    if real not in (True, False):
+        real = True
 
-    # if not page:
-    #     page = 0
+    if not page_size:
+        page_size = 50
 
-    # if not query:
-    #     query = '*'
+    if not index:
+        index = 'BDL'
+    index = index.upper()
 
-    # if not domain:
-    #     domain = 'kluemarket.com'
+    if not page:
+        page = 0
 
-    # res = search_item_sold_index(query, page, item_per_page, country, real=real)
+    if not location:
+        location = 'ALL'
 
-    # solditems = []
-    # count_found = res['hits']['total']
-    # for doc in res['hits']['hits']:
-    #     doc_id = doc['_id']
-    #     if doc_id.lower() != doc_id:
-    #         log.info("#######  DELETING %s" % doc_id)
-    #         get_es().delete(
-    #             index='items-sold-live',
-    #             doc_type='SOLD_ITEM',
-    #             id=doc_id,
-    #             refresh=True,
-    #             ignore=[404],
-    #         )
-    #         continue
+    location = location.upper()
+    assert location in ('ALL', 'SE', 'AROUND_SE')
 
-    #     item = doc_to_item_sold(doc, domain)
-    #     if is_error(item):
-    #         # Skip corrupt data
-    #         count_found = count_found - 1
-    #     else:
-    #         solditems.append(item)
+    internal_query = query if query else ''
+    if location != 'ALL':
+        internal_query = '%s %s' % (query, location)
+    internal_query.strip()
 
-    # # Prepare the SearchResultSold object to send back
-    # def gen_url(page):
-    #     url = '/v1/search/query?query=%s&page=%s&domain=%s' % (quote_plus(query.encode('utf8')), int(page), domain)
-    #     if country:
-    #         url = url + '&country=%s' % country
-    #     return url
+    suffix = 'live' if real else 'test'
 
-    # if count_found <= (page + 1) * item_per_page:
-    #     url_next = None
-    # else:
-    #     url_next = gen_url(page + 1)
+    if index == 'BDL':
+        index_name = 'bdlitems-' + suffix
+    else:
+        raise InternalServerError("Don't know how to search index %s" % index)
 
-    # log.debug("Found: %s" % solditems)
-    # return ApiPool.search.model.SearchResultSold(
-    #     count_found=count_found,
-    #     query=query,
-    #     url_this=gen_url(page),
-    #     url_next=url_next,
-    #     items=solditems,
-    # )
+    res = es_search_index(
+        index_name=index_name,
+        doc_type='BDL_ITEM',
+        sort=[
+            {'count_views': {'order': 'desc'}},
+            {'display_priority': {'order': 'desc'}},
+            {'date_created': {'order': 'desc'}},
+        ],
+        query=internal_query,
+        page=page,
+        item_per_page=page_size,
+    )
+
+    count_found = res['hits']['total']
+    items = []
+    for doc in res['hits']['hits']:
+        j = doc['_source']
+
+        # NOTE: ugly patch to cleanup early broken data - Remove soon
+        if j['date_created'] <= '2019-06-01':
+            log.debug("ES document %s is outdated (%s) - Deleting it" % (j['item_id'], j['date_created']))
+            es_delete_doc(index_name, 'BDL_ITEM', j['uid'])
+            count_found = count_found - 1
+            continue
+
+        import json
+        log.debug("Looking at item: %s" % json.dumps(j, indent=4))
+        item = ApiPool.api.json_to_model('Item', j)
+        model_to_item(item)
+        items.append(item)
+
+    # Query urls for the current and next page
+    def gen_url(page):
+        url = '/v1/search?page=%s&page_size=%s' % (
+
+            int(page),
+            int(page_size),
+        )
+        if query:
+            url = url + '&query=%s' % quote_plus(query.encode('utf8'))
+        if location:
+            url = url + '&location=%s' % location
+        if not real:
+            url = url + '&real=false'
+        return url
+
+    # Result object
+    results = ApiPool.api.model.SearchedItems(
+        query=query,
+        location=location,
+        count_found=count_found,
+        url_this=gen_url(page),
+        items=items,
+    )
+
+    if count_found > (page + 1) * page_size:
+        results.url_next = gen_url(page + 1)
+
+    return results

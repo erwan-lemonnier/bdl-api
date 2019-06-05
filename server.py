@@ -23,7 +23,7 @@ def start(port=None, debug=None):
     )
     api.load_apis(path_apis)
     api.publish_apis(path='docs')
-    api.start(serve=['bdl'])
+    api.start(serve=['api'])
 
 
 letsgo(__name__, callback=start)

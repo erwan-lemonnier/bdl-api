@@ -11,7 +11,7 @@ info:
     # OpenAPI Specification
 
     The OpenAPI specification (aka Swagger specification) for the Bazardelux
-    API is available [here](https://api.bazardelux.com/docs/bdl.yaml).
+    API is available [here](https://api.bazardelux.com/docs/api.yaml).
 
     # Authentication
 
@@ -67,13 +67,21 @@ produces:
   - application/json
 paths:
 
+
   /v1/search:
     get:
-      summary: Search the database of items for sale.
+      summary: Search the database of items.
       description:
 
-        Search the database of items currently for sale and return a list of
-        items to display in the frontend.
+        Search the database of items and return generic scraped items.
+
+        If the targeted index is 'BDL', the items returned will have a
+        'bdlitem' attribute filled with the data specific to the corresponding
+        sale announce.
+
+        The location parameter may be a country code (example 'SE'), or the
+        string 'AROUND_<country_code>' (example 'AROUND_SE') hence adding
+        surrounding countries to the search, or 'ALL'.
 
       parameters:
         - in: query
@@ -97,8 +105,8 @@ paths:
           required: false
           type: string
         - in: query
-          name: country
-          description: Restrict search to this country.
+          name: location
+          description: Restrict search to this country or group of countries.
           required: false
           type: string
         - in: query
@@ -119,7 +127,7 @@ paths:
         '200':
           description: Matching items
           schema:
-            $ref: '#/definitions/ItemsForSale'
+            $ref: '#/definitions/SearchedItems'
         default:
           description: Error
           schema:
@@ -353,30 +361,28 @@ paths:
 definitions:
 
 
-  ItemsForSale:
+  SearchedItems:
     type: object
     description: A list of items for sale.
     properties:
       query:
         type: string
-        description: The keywords searched for
+        description: The keywords searched for.
+      location:
+        type: string
+        description: Which country/location the search focused on.
       count_found:
         type: number
-        description: Number of matches
+        description: Number of matches.
       url_this:
         type: string
-        description: The url that returned this result
+        description: The url that returned this result.
       url_next:
         type: string
-        description: Url to get the next result set
-      htmls:
-        type: array
-        description: HTML blocks representing items to be inserted in search page
-        items:
-          type: string
+        description: Url to get the next result set, or undefined if all hits have been retrieved.
       items:
         type: array
-        description: Items for sale
+        description: Matching items.
         items:
           $ref: "#/definitions/Item"
 
