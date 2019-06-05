@@ -21,6 +21,7 @@ jwt_audience: BDL_JWT_AUDIENCE
 live_host: api.bazardelux.com
 
 with_async: true
+worker_count: 4
 
 slack_url: https://hooks.slack.com/services/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
 slack_api_channel: _api
