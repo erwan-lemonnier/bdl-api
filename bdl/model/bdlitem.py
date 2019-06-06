@@ -19,14 +19,16 @@ log = logging.getLogger(__name__)
 
 
 def model_to_bdlitem(o):
-    """Take a bravado object and return a UserProfile"""
+    """Take a bravado object or ES dict and return a BDLItem"""
     mixin(o, BDLItem)
 
-    # Make sure prices are integers
+    # Make sure numbers are integers
     if o.price:
         o.price = int(o.price)
     if o.price_sold:
         o.price_sold = int(o.price_sold)
+    if o.epoch_published:
+        o.epoch_published = int(o.epoch_published)
 
     # Monkey patch __str__
     def str(self):
