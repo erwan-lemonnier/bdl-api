@@ -569,6 +569,9 @@ definitions:
         type: string
         format: date-time
         description: (Optional) Date at which this item was sold.
+      epoch_published:
+        type: integer
+        description: (Optional) When this announce was published.
       native_doc_id:
         type: string
         description: (Optional) The document ID of the original announce in its marketplace (Facebook doc ID, blocket_id, tradera_id)
@@ -645,7 +648,7 @@ definitions:
         format: date-time
         description: (Optional) Date at which this item was sold.
       epoch_published:
-        type: number
+        type: integer
         description: (Optional) When this announce was published.
       native_doc_id:
         type: string
