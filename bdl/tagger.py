@@ -59,6 +59,7 @@ class KeywordList:
 
     # parents: tag1, tag2...     -> parent tags under which matching items may be found
     # grants: tag1, tag2...      -> tags to attach to any matching item
+    # name: This That            -> name to show in the frontend for this category
     keyword1
     keyword2  -> general keywords, matching whatever the language
     en:keyword3   -> keyword to match only if announce is in english
@@ -74,6 +75,7 @@ class KeywordList:
         log.info("Loading keyword list from %s" % path)
 
         self.name = path.split('/')[-1].replace('.html', '').replace('.txt', '')
+        self.translation = self.name
         self.is_html = True if path.endswith('.html') else False
         self.parent_tags = []
         self.grant_tags = []
@@ -90,6 +92,8 @@ class KeywordList:
                     tags = l.split(':')[1].split(',')
                     tags = [ss.strip() for ss in tags]
                     self.grant_tags = tags
+                elif l.startswith('# name: '):
+                    self.translation = l.split(':')[1].strip()
                 else:
                     raise Exception("Keyword file has borked header: %s" % path)
             else:
@@ -130,6 +134,7 @@ class Node:
         assert type(kwl) is KeywordList
 
         self.name = name
+        self.translation = kwl.translation
         self.keywords = kwl.keywords
         self.parents = []
         self.paths = []
