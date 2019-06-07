@@ -23,11 +23,11 @@ def model_to_bdlitem(o):
     mixin(o, BDLItem)
 
     # Make sure numbers are integers
-    if o.price:
+    if hasattr(o, 'price') and o.price:
         o.price = int(o.price)
-    if o.price_sold:
+    if hasattr(o, 'price_sold') and o.price_sold:
         o.price_sold = int(o.price_sold)
-    if o.epoch_published:
+    if hasattr(o, 'epoch_published') and o.epoch_published:
         o.epoch_published = int(o.epoch_published)
 
     # Monkey patch __str__
