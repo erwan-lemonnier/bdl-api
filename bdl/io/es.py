@@ -25,14 +25,21 @@ class JSONSerializerPython2(serializer.JSONSerializer):
             raise exceptions.SerializationError(data, e)
 
 
-def get_es(config_path=None):
+def get_es(config_path=None, host=None, aws_access_key_id=None, aws_secret_access_key=None, aws_region=None):
     """Return an instance of Elasticsearch"""
     conf = get_config(path=config_path)
-    host = conf.es_search_host
+    if not aws_access_key_id:
+        aws_access_key_id = conf.aws_access_key_id
+    if not aws_secret_access_key:
+        aws_secret_access_key = conf.aws_secret_access_key
+    if not aws_region:
+        aws_region = conf.aws_region
+    if not host:
+        host = conf.es_search_host
     awsauth = AWS4Auth(
-        conf.aws_access_key_id,
-        conf.aws_secret_access_key,
-        conf.aws_region,
+        aws_access_key_id,
+        aws_secret_access_key,
+        aws_region,
         'es'
     )
 
