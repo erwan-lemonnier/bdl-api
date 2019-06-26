@@ -70,6 +70,9 @@ def main(item_id):
     if 'tradera_location' in j:
         location = j['tradera_location']
 
+    has_ended = True if 'is_archived' in j and j['is_archived'] else False
+    archive_date = parse(j['archive_date']) if 'archive_date' in j else None
+
     i = ApiPool.api.model.Item(
         item_id=item_id,
         index='BDL',
@@ -88,9 +91,9 @@ def main(item_id):
             price=j['price'],
             price_is_fixed=False,
             currency=j['currency'],
-            has_ended=True if j['is_archived'] else False,
-            date_ended=parse(j['archive_date']) if 'archive_date' in j else None,
-            is_sold=True if j['is_archived'] else False,
+            has_ended=has_ended,
+            date_ended=archive_date,
+            is_sold=has_ended,
             epoch_published=j['epoch_created'],
             native_doc_id=doc_id,
             native_location=location,
