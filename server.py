@@ -4,10 +4,13 @@ from flask import Flask
 from pymacaron import API, letsgo
 from bdl.formats import get_custom_formats
 from bdl.exceptions import bdl_error_reporter
+from bdl.scheduler import tictoc
+
 
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
 
 def start(port=None, debug=None):
 
@@ -20,6 +23,7 @@ def start(port=None, debug=None):
         debug=debug,
         formats=get_custom_formats(),
         error_reporter=bdl_error_reporter,
+        ping_hook=tictoc,
     )
     api.load_apis(path_apis)
     api.publish_apis(path='docs')
