@@ -134,6 +134,41 @@ paths:
             $ref: '#/definitions/Error'
 
 
+  /v1/search/latest:
+    get:
+      summary: Get the newest indexed item from a given source
+      description: |
+
+        Get the newest indexed item from a given source. Searches the
+        elasticsearch index for all items from this source, ordered by creation
+        date and return the most recent one, or a 404 if none is found.
+
+      parameters:
+        - in: query
+          name: source
+          description: The source from which to get the latest item.
+          required: true
+          type: string
+
+      tags:
+        - Search
+      produces:
+        - application/json
+      x-bind-server: bdl.api.search.do_search_latest_item
+      x-bind-client: search_latest_item
+      x-decorate-server: pymacaron.auth.requires_auth
+      x-decorate-request: pymacaron.auth.add_auth
+      responses:
+        '200':
+          description: Latest item
+          schema:
+            $ref: '#/definitions/Item'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+
+
   /v1/items/process:
     post:
       summary: Submit one or more scraped objects for curation.

@@ -2,11 +2,36 @@ import logging
 from urllib.parse import quote_plus
 from pymacaron_core.swagger.apipool import ApiPool
 from bdl.exceptions import InternalServerError
+from bdl.exceptions import ESItemNotFoundError
 from bdl.model.item import model_to_item
 from bdl.db.elasticsearch import es_search_index, es_delete_doc
 
 
 log = logging.getLogger(__name__)
+
+
+def do_search_latest_item(source=None):
+    """Query the elasticsearch index for the given source and retrieve the newest item or None"""
+    assert source
+
+    res = es_search_index(
+        index_name='bdlitems-live',
+        doc_type='BDL_ITEM',
+        sort=[
+            {'date_created': {'order': 'desc'}},
+        ],
+        query='SOURCE_%s' % source.upper(),
+        page=0,
+        item_per_page=1,
+    )
+
+    if 'hits' in res and len(res['hits']['hits']):
+        hit = res['hits']['hits'][0]
+        item = ApiPool.api.json_to_model('Item', hit['_source'])
+        model_to_item(item)
+        return item
+
+    raise ESItemNotFoundError('Found no items from source %s' % source)
 
 
 def do_search_items(query=None, page=0, page_size=None, real=None, location=None, index=None):
