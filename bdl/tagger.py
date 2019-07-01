@@ -8,7 +8,7 @@ from bdl.utils import html_to_unicode
 log = logging.getLogger(__name__)
 
 
-DIR_TAGS = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'etc', 'tags')
+DIR_NODES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'etc', 'nodes')
 
 
 def text_to_words(s):
@@ -152,9 +152,10 @@ class Node:
         assert type(nodes) is list
         self.grants = nodes
 
-    def match(self, text, language='en'):
+    def match(self, text, language):
         """Return true if this node matches that string"""
         assert type(text) is str
+        assert language
 
         text = " %s " % text.lower()
 
@@ -229,14 +230,14 @@ class Tree:
         node_grants = {}
 
         # Step 1: load all nodes from tag files
-        for filename in sorted(os.listdir(DIR_TAGS)):
+        for filename in sorted(os.listdir(DIR_NODES)):
 
             if not filename.endswith(".html"):
                 continue
 
             # log.debug("Loading tags from %s" % filename)
 
-            kwl = KeywordList(DIR_TAGS + '/' + filename)
+            kwl = KeywordList(DIR_NODES + '/' + filename)
 
             node = Node(kwl.name, kwl)
             self.all_nodes[node.name] = node
@@ -296,8 +297,11 @@ def get_tree():
     global tree
     return tree
 
-def get_matching_tags(text):
+def get_matching_tags(text, language):
     """Find all the tags and paths that apply to this text"""
+
+    assert text
+    assert language
 
     # log.debug('TAG MATCHER: Finding tags matching [%s..]' % (text[0:10]))
 
@@ -316,7 +320,7 @@ def get_matching_tags(text):
 
     # Find all nodes
     for node in tree.get_all_nodes():
-        if node.match(text):
+        if node.match(text, language):
             # log.debug('TAG MATCHER: Text [%s] matches node %s' % (text[0:10], node))
             matching_nodes[node.name] = node
             if node.grants:
@@ -350,4 +354,4 @@ def get_matching_tags(text):
 
     tags = tags
     log.debug('Text [%s..] matches tags: %s' % (text[0:20], ' '.join(list(tags))))
-    return list(tags)
+    return sorted(list(tags))

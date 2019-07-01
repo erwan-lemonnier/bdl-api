@@ -110,7 +110,7 @@ class BDLItem():
                 item_tags = item_tags + [t for t in tags] + [cat.name.upper()]
 
         # Find all tags/categories that match this item
-        tags = get_matching_tags(text)
+        tags = get_matching_tags(text, self.language)
         if len(tags) > 0:
             item_tags = item_tags + [t for t in tags]
 

@@ -62,7 +62,7 @@ class Test(TestCase):
 
     def test_keywordlist(self):
         # Test a keyword list with attributes (only 1 parent & 1 grant)
-        kwl = KeywordList('%s/tags/mulberry.html' % PATH_ETC)
+        kwl = KeywordList('%s/nodes/mulberry.html' % PATH_ETC)
         self.assertEqual(kwl.name, 'mulberry')
         self.assertEqual(kwl.is_html, True)
         self.assertEqual(kwl.parent_tags, ['bags'])
@@ -70,7 +70,7 @@ class Test(TestCase):
         self.assertEqual(len(kwl.keywords), 1)
 
         # Test a keyword list with attributes (many parents & grants)
-        kwl = KeywordList('%s/tags/louisvuitton.html' % PATH_ETC)
+        kwl = KeywordList('%s/nodes/louisvuitton.html' % PATH_ETC)
         self.assertEqual(kwl.name, 'louisvuitton')
         self.assertEqual(kwl.is_html, True)
         self.assertEqual(kwl.parent_tags, ['bags', 'shoes', 'glasses'])
@@ -92,19 +92,29 @@ class Test(TestCase):
 
 
     def test_node(self):
-        kwl = KeywordList('%s/tags/louisvuitton.html' % PATH_ETC)
+        kwl = KeywordList('%s/nodes/louisvuitton.html' % PATH_ETC)
         n = Node('louisvuitton', kwl)
         self.assertEqual(n.name, 'louisvuitton')
-        self.assertTrue(n.match('louis vuitton bag'))
-        self.assertTrue(n.match('vuitton'))
-        self.assertFalse(n.match('gucci bag'))
+        self.assertTrue(n.match('louis vuitton bag', 'en'))
+        self.assertTrue(n.match('louis vuitton bag', 'sv'))
+        self.assertTrue(n.match('vuitton', 'en'))
+        self.assertFalse(n.match('gucci bag', 'en'))
+
+        # Test language specific matches
+        kwl = KeywordList('%s/nodes/chair.html' % PATH_ETC)
+        n = Node('chair', kwl)
+        self.assertEqual(n.name, 'chair')
+        self.assertTrue(n.match('chair', 'en'))
+        self.assertFalse(n.match('chair', 'sv'))
+        self.assertTrue(n.match('karmstol', 'sv'))
+        self.assertFalse(n.match('karmstol', 'en'))
 
 
     def test_path(self):
 
-        lv = Node('louisvuitton', KeywordList('%s/tags/louisvuitton.html' % PATH_ETC))
-        bag = Node('bags', KeywordList('%s/tags/bags.html' % PATH_ETC))
-        fashion = Node('fashion', KeywordList('%s/tags/fashion.html' % PATH_ETC))
+        lv = Node('louisvuitton', KeywordList('%s/nodes/louisvuitton.html' % PATH_ETC))
+        bag = Node('bags', KeywordList('%s/nodes/bags.html' % PATH_ETC))
+        fashion = Node('fashion', KeywordList('%s/nodes/fashion.html' % PATH_ETC))
 
         p = Path(fashion)
         p.has_child(bag)
@@ -150,60 +160,80 @@ class Test(TestCase):
     def test_get_matching_tags(self):
         tests = [
             [
+                'sv',
                 '&auml;kta Louis Vuitton speedy Louis Vuitton speedy 30 i perfekt skick. F&aring;tt den h&auml;rliga m&ouml;rkbruna f&auml;rgen. Knappt anv&auml;nd.',
                 ['louisvuitton', 'louisvuittonspeedy', 'path:fashion:bags:louisvuitton:louisvuittonspeedy', 'path:fashion:bags', 'path:fashion:bags:louisvuitton', 'bags', 'path:fashion', 'fashion'],
             ],
             [
+                'en',
+                '&auml;kta Louis Vuitton speedy Louis Vuitton speedy 30 i perfekt skick. F&aring;tt den h&auml;rliga m&ouml;rkbruna f&auml;rgen. Knappt anv&auml;nd.',
+                ['louisvuitton', 'louisvuittonspeedy', 'path:fashion:bags:louisvuitton:louisvuittonspeedy', 'path:fashion:bags', 'path:fashion:bags:louisvuitton', 'bags', 'path:fashion', 'fashion'],
+            ],
+            [
+                'sv',
                 'V&auml;ska Louis Vuitton Louis Vuitton i perfekt skick. Den perfekta v&auml;skan v&auml;skan. F&aring;tt den h&auml;rliga m&ouml;rkbruna f&auml;rgen. Knappt anv&auml;nd.',
                 ['louisvuitton', 'path:fashion', 'path:fashion:bags', 'bags', 'path:fashion:bags:louisvuitton', 'fashion'],
             ],
             [
+                'sv',
                 'LV skor ** Skor, stl. 38, dam ** Nya Louis Vuitton mockasiner.',
                 ['louisvuitton', 'path:fashion', 'shoes', 'path:fashion:shoes:louisvuitton', 'path:fashion:shoes', 'fashion'],
             ],
             [
+                'sv',
                 'Solglas&ouml;gon Gucci Solglas&ouml;gon Gucci, ink&ouml;pta hos optiker i Nice, Frankrike. Skimrande svartbruna med m&ouml;rkt glas. Gucciemblemet i strass p&aring; skalmen. V&auml;ldigt sk&ouml;na och sitter bra p&aring; n&auml;san. Nypris 3 500 kr.',
                 ['gucci', 'path:fashion', 'path:fashion:glasses:gucci', 'glasses', 'path:fashion:glasses', 'fashion'],
             ],
-
             [
+                'sv',
                 'Solglas&ouml;gon Gucci Solglas&ouml;gon Gucci, ink&ouml;pta hos optiker i Nice, Frankrike. Skimrande svartbruna med m&ouml;rkt glas. Gucciemblemet i strass p&aring; skalmen. V&auml;ldigt sk&ouml;na och sitter bra p&aring; n&auml;san. Nypris 3 500 kr.',
                 ['gucci', 'path:fashion', 'path:fashion:glasses:gucci', 'glasses', 'path:fashion:glasses', 'fashion'],
             ],
-
             [
+                'sv',
                 'Karmstolar bord pelarbord &aring;ttakantigt bord Charmigt Gustavianskt kaklat bord',
-                ['path:antics:gustavian', 'path:antics', 'antics', 'gustavian'],
+                ['antics', 'chair', 'furniture', 'gustavian', 'path:antics', 'path:antics:gustavian', 'path:furniture', 'path:furniture:chair', 'path:furniture:table', 'table']
             ],
             [
+                'sv',
                 'Rokoko karmstol svenskt tenn',
-                ['path:antics:rococo', 'path:antics', 'antics', 'rococo', 'design', 'path:design', 'path:design:svenskttenn', 'svenskttenn'],
+                ['furniture', 'path:furniture', 'svenskttenn', 'chair', 'design', 'path:design', 'path:design:svenskttenn', 'path:antics', 'path:antics:rococo', 'rococo', 'path:furniture:chair', 'antics']
             ],
             [
+                'sv',
                 'Swedese Tree Tree kl&auml;dh&auml;ngare i svart fr&aring;n Swedese.',
                 ['path:design', 'design', 'path:design:swedese', 'swedese'],
             ],
             [
+                'sv',
                 '6 st Sjuan SJUAN 3107 helkl&auml;dda i originaltyg Stolarna &auml;r 15 &aring;r gamla och i bra bruksskick. Annonsen kvar = stolarna kvar. F&ouml;rst till kvarn. Tillverkade av Fritz Hansen, design Arne Jacobsen. Nypris per stol: 8120 kr Mitt pris: 9000 kr för alla 6 stolar',
-                ['arnejacobsen', 'path:design', 'path:design:arnejacobsen', 'path:design:fritzhansen', 'fritzhansen', 'design'],
+                ['arnejacobsen', 'chair', 'design', 'fritzhansen', 'furniture', 'path:design', 'path:design:arnejacobsen', 'path:design:fritzhansen', 'path:furniture', 'path:furniture:chair']
             ],
             [
+                'sv',
                 'Unik och Rymlig Mulberry axelv&auml;ska 30x40cm i svart l&auml;der och mocka. V&auml;skan ar numrerad. Dustbag medfoljer.',
                 ['bags', 'path:fashion', 'path:fashion:bags', 'path:fashion:bags:mulberry', 'fashion', 'mulberry'],
             ],
             [
+                'sv',
                 'Gutaviansk mattgrupp bord +6 stolar ,sidobird Utdragbar bord med 6stolar i gustaviansk still 1400-1000mm utan il&auml;ggsskivor sideboard sk&auml;nk i samma still och f&auml;rg L1850-DJ 435 H800 M : 5500kr Indisk soffbord300kr ek soffbord 150kr och vinst&auml;ll for 40vin flaskor 1500kr och en tavla for 100kr',
-                ['path:antics:gustavian', 'antics', 'gustavian', 'path:antics'],
+                ['antics', 'chair', 'furniture', 'gustavian', 'path:antics', 'path:antics:gustavian', 'path:furniture', 'path:furniture:chair', 'path:furniture:table', 'table']
             ],
             [
+                'sv',
                 'Michael Kors klocka modell MK6188',
                 ['path:fashion:watches', 'fashion', 'path:fashion', 'path:fashion:watches:michaelkors', 'michaelkors', 'watches'],
             ],
+            [
+                'sv',
+                'Antik karmstol',
+                ['antics', 'chair', 'furniture', 'path:antics', 'path:furniture', 'path:furniture:chair'],
+            ],
         ]
 
-        for text, expected_tags in tests:
+        for lang, text, expected_tags in tests:
             text = html_to_unicode(text)
-            tags = get_matching_tags(text)
+            tags = get_matching_tags(text, lang)
             log.info("Text [%s..] matches tags: %s" % (text[0:10], tags))
 
             tags = set(tags)
