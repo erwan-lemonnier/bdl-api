@@ -270,69 +270,7 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/tasks:
-    get:
-      summary: Get a list of tasks for web scrapers
-      description: |
-
-        Get a list of tasks for web scrapers.
-
-        Use the goal parameter to select the kind of scraper task to retrieve:
-
-        * goal='CHECK_IF_SOLD': return BDL urls for which the scraper needs to
-          verify if the announce if still for sale (in which case the parser
-          does not need to scrape and process the announce again), or if it has
-          been sold (or removed), in which case the announce should be
-          processed again with the has_ended attribute set to True.
-
-        * goal='SCRAP_URL': return urls of pages that need to be completely
-          scraped, and sent back for processing with the 'is_complete'
-          attribute set to True.
-
-        * goal='SCAN': list all objects on a landing or index page, up to a
-          certain boundary condition (date_until or limit).
-
-      parameters:
-        - in: query
-          name: limit
-          type: number
-          description: Max number of tasks to return (10 by default)
-          required: false
-        - in: query
-          name: goal
-          type: string
-          description: What kind of tasks to get back.
-          required: true
-          enum:
-            - CHECK_IF_SOLD
-            - SCRAP_URL
-            - SCAN
-        - in: query
-          name: real
-          description: Get live tasks if 'true' (default), or test ones if 'false'.
-          required: false
-          type: string
-
-      tags:
-        - Tasks
-      produces:
-        - application/json
-      x-bind-server: bdl.api.items.do_get_scraper_tasks
-      x-bind-client: get_scraper_tasks
-      x-decorate-server: pymacaron.auth.requires_auth
-      x-decorate-request: pymacaron.auth.add_auth
-      responses:
-        '200':
-          description: Pages to scrape
-          schema:
-            $ref: '#/definitions/ScraperTasks'
-        default:
-          description: Error
-          schema:
-            $ref: '#/definitions/Error'
-
-
-  /v1/sitemap/refresh:
+  /v1/bdl/sitemap/refresh:
     get:
       summary: Update the site''s sitemap.
       description: |
@@ -340,7 +278,7 @@ paths:
         Regenerate the sitemap of bazardelux.com.
 
       tags:
-        - Sitemap
+        - BDL
       produces:
         - application/json
       x-bind-server: bdl.api.sitemap.do_generate_sitemap
@@ -803,51 +741,6 @@ definitions:
     required:
       - action
 
-
-  ScraperTasks:
-    type: object
-    description: A list of web pages to scrape.
-    properties:
-      tasks:
-        type: array
-        description: A list of web pages to scrape.
-        items:
-          $ref: '#/definitions/ScraperTask'
-      url_callback:
-        type: string
-        description: (Optional) A callback url to call from the scraper to process each page''s data (default to not pushing results and listing them back in reply instead)
-    required:
-      - tasks
-      - url_callback
-    example:
-      tasks: []
-      url_callback: https://api.bazardelux.com/v1/objects/process
-
-
-  ScraperTask:
-    type: object
-    description: A web page to scrape.
-    properties:
-      source:
-        type: string
-        description: The scraper to use for scraping.
-      goal:
-        type: string
-        description: What kind of parsing to do on this page.
-        enum:
-          - CHECK_IF_SOLD
-          - SCRAP_URL
-          - SCAN
-      native_url:
-        type: string
-        description: URL to the original web page to scrape.
-      scraper_data:
-        type: string
-        description: (Optional) Extra data provided by the scraper, as a json string.
-    required:
-      - source
-      - goal
-      - native_url
 
 
   #

@@ -105,9 +105,3 @@ def do_archive_item(data, item_id=None):
     item.archive()
 
     return item
-
-
-def do_get_scraper_tasks(limit, goal):
-    """Return a list of scraper tasks"""
-    # TODO: get scraper tasks
-    pass
