@@ -43,7 +43,7 @@ from bdl.exceptions import bdl_error_reporter
 from bdl.io.slack import do_slack
 
 
-def call_api(method, url, data=None):
+def call_api(method, url, data=None, ignore_error=False):
     headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer %s' % generate_token('scheduler', data={}, expire_in=86400)
@@ -57,18 +57,46 @@ def call_api(method, url, data=None):
     # TODO: if j is an error, raise it as an exception
 
 
+#
+# SCAN
+#
+
+LAST_SCAN_EPOCHS = {
+    # source: epoch last scan
+}
+
 def scan_source(source):
     source = source.upper()
     log.info("=> Lauching scan of source %s" % source)
-    # call v1/search/latest
-    # epoch_latest = hit, or default to 1 day in past
-    # call v1/scan with epoch_latest
 
+    global LAST_SCAN_EPOCHS
+
+    # By default, scan 1 day back in time
+    epoch_oldest = to_epoch(timenow) - 86600
+
+    if source in LAST_SCAN_EPOCHS:
+        # Scan announces until back to the publication times later than when the last scan started
+        epoch_oldest = LAST_SCAN_EPOCHS[source]
+    else:
+        # Find out epoch of last scan
+        j = call_api('GET', 'https://api.bazardelux.com/v1/search/latest?source?%s' % source, ignore_error=True)
+        if 'bdlitem' in j and 'epoch_published' in j['bdlitem']:
+            epoch_oldest = j['bdlitem']['epoch_published']
+            # If j is an error, just use the default epoch_oldest
+
+    # And launch a scan
+    log.info("Scanning back to epoch %s (%s)" % (epoch_oldest, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epoch_oldest))))
     call_api(
         'POST',
-        'https://crawler.bazardelux.com/v1/scan/%s' % source.lower(),
-        {},
+        'https://crawler.bazardelux.com/v1/crawler/scan/%s' % source.lower(),
+        {
+            'source': source,
+            'epoch_oldest': epoch_oldest,
+        },
     )
+
+    # Remember the new epoch_oldest
+    LAST_SCAN_EPOCHS[source] = epoch_oldest
 
     do_slack(
         "Scheduler: launched scan of source %s" % source,
@@ -78,9 +106,9 @@ def scan_source(source):
 
 def update_sitemap():
     log.info("=> Lauching sitemap update")
-    # call v1/sitemap/refresh
-    # epoch_latest = hit, or default to 1 day in past
-    # call v1/scan with epoch_latest
+
+    call_api('GET', 'https://api.bazardelux.com/v1/bdl/sitemap/update')
+
     do_slack(
         "Scheduler: Updated sitemap",
         channel=get_config().slack_scheduler_channel,
@@ -99,12 +127,6 @@ def clean_source(source):
         "Scheduler: launched cleanup of source %s" % source,
         channel=get_config().slack_scheduler_channel,
     )
-
-
-# TODO: schedule with https://schedule.readthedocs.io/en/stable/
-
-
-#
 
 
 @click.command()

@@ -305,9 +305,9 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/bdl/sitemap/refresh:
+  /v1/bdl/sitemap/update:
     get:
-      summary: Update the site''s sitemap.
+      summary: Launch a sitemap update.
       description: |
 
         Regenerate the sitemap of bazardelux.com.
