@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+import os
+import sys
+import json
+import time
+import logging
+import requests
+import schedule
+import click
+import flask
+import traceback
+from pymacaron.config import get_config
+from pymacaron.auth import generate_token
+from pymacaron.utils import timenow, to_epoch
+from pymacaron.crash import set_error_reporter
+from pymacaron.crash import report_error
+from pymacaron.crash import populate_error_report
+
+
+log = logging.getLogger(__name__)
+
+
+app = flask.Flask(__name__)
+
+
+# Setup logging
+log.setLevel(logging.DEBUG)
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+# formatter = logging.Formatter('%(message)s')
+# handler.setFormatter(formatter)
+log.addHandler(handler)
+logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
+
+
+PATH_LIBS = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
+sys.path.append(PATH_LIBS)
+
+config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pym-config.yaml')
+get_config(config_path)
+
+from bdl.exceptions import bdl_error_reporter
+from bdl.io.slack import do_slack
+
+
+def call_api(method, url, data=None):
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer %s' % generate_token('scheduler', data={}, expire_in=86400)
+    }
+    if method == 'POST':
+        r = requests.post(url, data=json.dumps(data), headers=headers)
+    else:
+        r = requests.get(url, headers=headers)
+    j = r.json()
+    log.info("=> Got: %s" % json.dumps(j, indent=4))
+    # TODO: if j is an error, raise it as an exception
+
+
+def scan_source(source):
+    source = source.upper()
+    log.info("=> Lauching scan of source %s" % source)
+    # call v1/search/latest
+    # epoch_latest = hit, or default to 1 day in past
+    # call v1/scan with epoch_latest
+
+    call_api(
+        'POST',
+        'https://crawler.bazardelux.com/v1/scan/%s' % source.lower(),
+        {},
+    )
+
+    do_slack(
+        "Scheduler: launched scan of source %s" % source,
+        channel=get_config().slack_scheduler_channel,
+    )
+
+
+def update_sitemap():
+    log.info("=> Lauching sitemap update")
+    # call v1/sitemap/refresh
+    # epoch_latest = hit, or default to 1 day in past
+    # call v1/scan with epoch_latest
+    do_slack(
+        "Scheduler: Updated sitemap",
+        channel=get_config().slack_scheduler_channel,
+    )
+
+
+
+def clean_source(source):
+    source = source.upper()
+    log.info("=> Cleaning up oldest announces from %s" % source)
+    # Count how many items are indexed from this source, and retrieve as many
+    # of them so that all will be scanned within a week
+    # Call v1/parse with the item's urls
+
+    do_slack(
+        "Scheduler: launched cleanup of source %s" % source,
+        channel=get_config().slack_scheduler_channel,
+    )
+
+
+# TODO: schedule with https://schedule.readthedocs.io/en/stable/
+
+
+#
+
+
+@click.command()
+@click.option('--scan', required=False, metavar='SOURCE', help="Scan the given source", default=False)
+@click.option('--clean', required=False, metavar='SOURCE', help="Remove sold announces from this source", default=False)
+@click.option('--sitemap/--no-sitemap', required=False, metavar='', help="Update the bazardelux sitemap", default=False)
+def main(scan, clean, sitemap):
+    """Scheduler for bazardelux.com, in charge of running crawlers at regular
+    intervals, polling items to remove them when they are sold and updating the
+    sitemaps every day.
+
+    Can also be used to launch a single scan, clean or sitemap operation.
+
+    Examples:
+
+    tictac                      # Start the scheduler and keep it running #
+    tictac --scan TRADERA       # Scan TRADERA                            #
+    tictac --clean TRADERA      # Purge the oldest sold ads from TRADERA  #
+    tictac --sitemap            # Update bazardelux's sitemap             #
+
+    """
+
+    # Configure the error reporter and force pymacaron to report errors
+    set_error_reporter(bdl_error_reporter)
+    os.environ['DO_REPORT_ERROR'] = "1"
+
+    #
+    # Check arguments and run single tasks
+    #
+
+    if scan or clean:
+        if scan and clean:
+            log.warn("You must provide only one of --scan or --clean")
+            sys.exit(1)
+        if scan:
+            scan_source(scan)
+            sys.exit(0)
+        if clean:
+            clean_source(clean)
+            sys.exit(0)
+    elif sitemap:
+        update_sitemap()
+        sys.exit(0)
+
+    #
+    # Default to running the scheduler
+    #
+
+    def wrapper(method, *args, **kwargs):
+        def scheduler_call():
+            try:
+                method(*args, **kwargs)
+            except Exception as e:
+                data = {}
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                trace = traceback.format_exception(exc_type, exc_value, exc_traceback, 30)
+                data['trace'] = trace
+                populate_error_report(data)
+                report_error(
+                    title='SCHEDULER CRASH: %s%s' % (method.__name__, str(args)),
+                    data=data,
+                    caught=e,
+                    is_fatal=True,
+                )
+
+        return scheduler_call
+
+    # schedule.every(3).seconds.do(wrapper(scan_source, 'TRADERA'))
+    schedule.every(60).minutes.do(wrapper(scan_source, 'TRADERA'))
+    schedule.every().day.at('00:00').do(wrapper(clean_source, 'TRADERA'))
+    schedule.every().day.at('12:00').do(wrapper(clean_source, 'TRADERA'))
+    schedule.every().day.at('04:00').do(wrapper(update_sitemap))
+
+    log.info("Starting scheduler...")
+    while True:
+        schedule.run_pending()
+        time.sleep(10)
+
+if __name__ == "__main__":
+    with app.test_request_context(''):
+        main()
