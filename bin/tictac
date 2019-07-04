@@ -43,6 +43,10 @@ from bdl.exceptions import bdl_error_reporter
 from bdl.io.slack import do_slack
 
 
+# If set, will override the default api|scraper.bazardelux.com target urls
+HOST = None
+
+
 def call_api(method, url, data=None, ignore_error=False):
     headers = {
         'Content-Type': 'application/json',
@@ -69,6 +73,8 @@ def scan_source(source):
     source = source.upper()
     log.info("=> Lauching scan of source %s" % source)
 
+    domain = HOST if HOST else 'https://api.bazardelux.com'
+
     global LAST_SCAN_EPOCHS
 
     # By default, scan 1 day back in time
@@ -79,7 +85,7 @@ def scan_source(source):
         epoch_oldest = LAST_SCAN_EPOCHS[source]
     else:
         # Find out epoch of last scan
-        j = call_api('GET', 'https://api.bazardelux.com/v1/search/latest?source?%s' % source, ignore_error=True)
+        j = call_api('GET', '%s/v1/search/latest?source?%s' % (domain, source), ignore_error=True)
         if 'bdlitem' in j and 'epoch_published' in j['bdlitem']:
             epoch_oldest = j['bdlitem']['epoch_published']
             # If j is an error, just use the default epoch_oldest
@@ -107,7 +113,9 @@ def scan_source(source):
 def update_sitemap():
     log.info("=> Lauching sitemap update")
 
-    call_api('GET', 'https://api.bazardelux.com/v1/bdl/sitemap/update')
+    domain = HOST if HOST else 'https://api.bazardelux.com'
+
+    call_api('GET', '%s/v1/bdl/sitemap/update' % domain)
 
     do_slack(
         "Scheduler: Updated sitemap",
@@ -133,7 +141,8 @@ def clean_source(source):
 @click.option('--scan', required=False, metavar='SOURCE', help="Scan the given source", default=False)
 @click.option('--clean', required=False, metavar='SOURCE', help="Remove sold announces from this source", default=False)
 @click.option('--sitemap/--no-sitemap', required=False, metavar='', help="Update the bazardelux sitemap", default=False)
-def main(scan, clean, sitemap):
+@click.option('--host', required=False, metavar='PROTO://HOST:PORT', help="Call this proto://host:port instead of the default bazardelux.com server", default=False)
+def main(scan, clean, sitemap, host):
     """Scheduler for bazardelux.com, in charge of running crawlers at regular
     intervals, polling items to remove them when they are sold and updating the
     sitemaps every day.
@@ -146,12 +155,17 @@ def main(scan, clean, sitemap):
     tictac --scan TRADERA       # Scan TRADERA                            #
     tictac --clean TRADERA      # Purge the oldest sold ads from TRADERA  #
     tictac --sitemap            # Update bazardelux's sitemap             #
+    tictac --sitemap --host http://127.0.0.1:8080
 
     """
 
     # Configure the error reporter and force pymacaron to report errors
     set_error_reporter(bdl_error_reporter)
     os.environ['DO_REPORT_ERROR'] = "1"
+
+    global HOST
+    if host:
+        HOST = host
 
     #
     # Check arguments and run single tasks
