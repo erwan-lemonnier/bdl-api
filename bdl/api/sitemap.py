@@ -4,6 +4,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 import requests
 import re
+import xml.etree.ElementTree as ET
 from boto.s3.key import Key
 from unidecode import unidecode
 from pymacaron.utils import timenow
@@ -155,13 +156,54 @@ def get_items_forsale_for_period(year, month):
             yield i
 
 
-def generate_sitemap_market(year, month):
+def generate_sitemap_announces(year, month):
     """Generate the endprice sitemap for the given year-month
     period and upload it to S3"""
+
+    # Name of that partial sitemap
+    smap_name = 'sitemap-bazardelux-%04d-%02d.xml' % (year, month)
 
     # We use a dict to filter out duplicates
     urls = {}
 
+    def add_url(url, date_created):
+        # Add one url to the the urls dict
+        log.debug("Adding (%s) (%s)" % (date_created, url))
+        urls[url] = {
+            'url': url,
+            'lastmod': str(date_created)[0:10],
+            'priority': '0.8',
+        }
+
+    # A problem we have is that from day to day, as the sitemap gets
+    # recompiled, announces that have been sold will have been removed from the
+    # ES index and therefore disappear from the sitemap. We could scan the
+    # dynamodb archive, but that would be awfully slow. So instead, we keep all
+    # urls indexed so far that month and only add to that list. That means
+    # we'll loose a few announces: those that got added, then sold the same
+    # day. But it's okay.
+
+    # First, fetch the sitemap for this year and month, if it exists, and load it into urls
+    smap = get_sitemap_urls(smap_name)
+    if smap:
+        # Extract all urls from that sitemap
+        log.debug("Loading: %s" % smap[0:500])
+        root = ET.fromstring(smap)
+        for url_data in list(root):
+            url, date = None, None
+            for e in list(url_data):
+                if str(e.tag).endswith('loc'):
+                    # It's the url
+                    url = e.text
+                elif str(e.tag).endswith('lastmod'):
+                    # It's the date updated
+                    date = e.text
+            if url:
+                add_url(url, date)
+
+        log.info("Loaded %s announces from current sitemap" % len(urls))
+
+    # Now add all announces still in the ES index
     for item in get_items_forsale_for_period(year, month):
         log.info("Got item: %s" % item)
         if not item:
@@ -171,22 +213,14 @@ def generate_sitemap_market(year, month):
             # A sitemap may not contain more than 50000 entries...
             break
 
-        log.info("Indexing [%s]" % (item))
-        log.info("Indexing [%s]" % (item.item_id))
-
-        u = item.url
-        urls[u] = {
-            'url': u,
-            'lastmod': item.date_created,
-            'priority': '0.8',
-        }
+        add_url(item.url, item.date_created)
 
     urls = list(urls.keys())
 
-    log.info("Found %s market items for period %04d-%02d" % (len(urls), year, month))
+    log.info("Listed %s announces for period %04d-%02d" % (len(urls), year, month))
 
     smap = compile_sitemap(urls)
-    smap_name = 'sitemap-bazardelux-%04d-%02d.xml' % (year, month)
+
     upload_sitemap(smap, smap_name)
 
 
@@ -194,21 +228,29 @@ def generate_sitemap_market(year, month):
 # Utils
 #
 
-def upload_sitemap(smap, key_target):
+def upload_sitemap(smap, key_name):
 
     if len(smap) == 0:
-        log.info("NOT uploading sitemap %s: it's empty..." % (key_target))
+        log.info("NOT uploading sitemap %s: it's empty..." % (key_name))
         return
 
-    log.info("Uploading sitemap %s" % (key_target))
+    log.info("Uploading sitemap %s" % (key_name))
 
     bucket = get_s3_conn().get_bucket('static.bazardelux.com')
 
     k = Key(bucket)
-    k.key = key_target
+    k.key = key_name
     k.set_metadata('Content-Type', 'application/xml')
     k.set_contents_from_string(smap)
     k.set_acl('public-read')
+
+
+def get_sitemap_urls(key_name):
+    bucket = get_s3_conn().get_bucket('static.bazardelux.com')
+    k = bucket.get_key(key_name)
+    if not k:
+        return ''
+    return k.get_contents_as_string()
 
 
 def ping_search_engines():
@@ -273,9 +315,9 @@ def do_generate_sitemap():
     # Generate sitemap of static pages
     generate_sitemap_static_pages()
 
-    # Regenerate sitemap for the last month
+    # Regenerate sitemap for the current month
     now = timenow()
-    generate_sitemap_market(now.year, now.month)
+    generate_sitemap_announces(now.year, now.month)
 
     # List all sitemaps for this site
     log.info("Listing all sitemaps in static.bazardelux.com")
