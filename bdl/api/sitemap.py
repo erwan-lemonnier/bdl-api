@@ -7,6 +7,7 @@ import re
 from boto.s3.key import Key
 from unidecode import unidecode
 from pymacaron.utils import timenow
+from pymacaron_core.swagger.apipool import ApiPool
 from bdl.utils import html_to_unicode
 from bdl.io.s3 import get_s3_conn
 from bdl.api.search import doc_to_item
@@ -274,9 +275,7 @@ def do_generate_sitemap():
 
     # Regenerate sitemap for the last month
     now = timenow()
-    # generate_sitemap_market(now.year, now.month)
-
-    generate_sitemap_market(2019, 6)
+    generate_sitemap_market(now.year, now.month)
 
     # List all sitemaps for this site
     log.info("Listing all sitemaps in static.bazardelux.com")
@@ -294,3 +293,5 @@ def do_generate_sitemap():
 
     # And ping search engines
     ping_search_engines()
+
+    return ApiPool.api.model.Ok()
