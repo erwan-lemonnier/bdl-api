@@ -10,6 +10,12 @@ from bdl.db.elasticsearch import es_search_index, es_delete_doc
 log = logging.getLogger(__name__)
 
 
+def doc_to_item(doc):
+    item = ApiPool.api.json_to_model('Item', doc['_source'])
+    model_to_item(item)
+    return item
+
+
 def do_search_latest_item(source=None):
     """Query the elasticsearch index for the given source and retrieve the newest item or None"""
     assert source
@@ -27,9 +33,7 @@ def do_search_latest_item(source=None):
 
     if 'hits' in res and len(res['hits']['hits']):
         hit = res['hits']['hits'][0]
-        item = ApiPool.api.json_to_model('Item', hit['_source'])
-        model_to_item(item)
-        return item
+        return doc_to_item(hit)
 
     raise ESItemNotFoundError('Found no items from source %s' % source)
 
@@ -94,9 +98,7 @@ def do_search_items(query=None, page=0, page_size=None, real=None, location=None
 
         import json
         log.debug("Looking at item: %s" % json.dumps(j, indent=4))
-        item = ApiPool.api.json_to_model('Item', j)
-        model_to_item(item)
-        items.append(item)
+        items.append(doc_to_item(j))
 
     # Query urls for the current and next page
     def gen_url(page):

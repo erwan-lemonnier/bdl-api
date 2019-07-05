@@ -155,3 +155,42 @@ def es_search_index(index_name=None, doc_type=None, sort=[], query=None, page=No
             return {'hits': {'hits': [], 'total': 0}}
         else:
             raise e
+
+
+def get_all_docs(query, index_name, doc_type, batch_size=100):
+    """Given an elasticsearch query, return all matching ES documents (can be a lot)"""
+
+    es = get_es()
+
+    log.info("Initializing scroll search for query: %s" % query)
+
+    res = es.search(
+        index=index_name,
+        doc_type=doc_type,
+        body=query,
+        scroll='2m',
+    )
+
+    scroll_id = res['_scroll_id']
+    log.info("scroll_id=%s" % scroll_id)
+
+    if not 'hits' in res or len(res['hits']['hits']) == 0:
+        return
+
+    # Return those results
+    for doc in res['hits']['hits']:
+        yield doc
+
+    # Now loop on results
+    loop = True
+    while loop:
+        res = es.scroll(
+            scroll='2m',
+            scroll_id=scroll_id
+        )
+
+        for doc in res['hits']['hits']:
+            yield doc
+
+        if len(res['hits']['hits']) < batch_size:
+            loop = False

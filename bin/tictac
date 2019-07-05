@@ -46,6 +46,9 @@ from bdl.io.slack import do_slack
 # If set, will override the default api|scraper.bazardelux.com target urls
 HOST = None
 
+# Is this a manual run, or a scheduled one?
+MANUAL=False
+
 
 def call_api(method, url, data=None, ignore_error=False):
     headers = {
@@ -105,7 +108,7 @@ def scan_source(source):
     LAST_SCAN_EPOCHS[source] = epoch_oldest
 
     do_slack(
-        "Scheduler: launched scan of source %s" % source,
+        "Scheduler: %slaunched scan of source %s" % ('manually ' if MANUAL else '', source),
         channel=get_config().slack_scheduler_channel,
     )
 
@@ -118,7 +121,7 @@ def update_sitemap():
     call_api('GET', '%s/v1/bdl/sitemap/update' % domain)
 
     do_slack(
-        "Scheduler: Updated sitemap",
+        "Scheduler: %supdated sitemap" % ('manually ' if MANUAL else ''),
         channel=get_config().slack_scheduler_channel,
     )
 
@@ -132,9 +135,10 @@ def clean_source(source):
     # Call v1/parse with the item's urls
 
     do_slack(
-        "Scheduler: launched cleanup of source %s" % source,
+        "Scheduler: %slaunched cleanup of source %s" % ('manually ' if MANUAL else '', source),
         channel=get_config().slack_scheduler_channel,
     )
+
 
 
 @click.command()
@@ -171,17 +175,22 @@ def main(scan, clean, sitemap, host):
     # Check arguments and run single tasks
     #
 
+    global MANUAL
+
     if scan or clean:
         if scan and clean:
             log.warn("You must provide only one of --scan or --clean")
             sys.exit(1)
         if scan:
+            MANUAL = True
             scan_source(scan)
             sys.exit(0)
         if clean:
+            MANUAL = True
             clean_source(clean)
             sys.exit(0)
     elif sitemap:
+        MANUAL = True
         update_sitemap()
         sys.exit(0)
 
