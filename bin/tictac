@@ -55,13 +55,15 @@ def call_api(method, url, data=None, ignore_error=False):
         'Content-Type': 'application/json',
         'Authorization': 'Bearer %s' % generate_token('scheduler', data={}, expire_in=86400)
     }
+    log.info("Calling %s %s" % (method, url))
     if method == 'POST':
         r = requests.post(url, data=json.dumps(data), headers=headers)
     else:
         r = requests.get(url, headers=headers)
-    j = r.json()
-    log.info("=> Got: %s" % json.dumps(j, indent=4))
-    # TODO: if j is an error, raise it as an exception
+    log.info("=> Got: %s" % r.text)
+    if str(r.status_code) != '200':
+        raise Exception("Call to %s %s with data %s returned %s" % (method, url, data, r.text))
+    return r.json()
 
 
 #
@@ -81,14 +83,14 @@ def scan_source(source):
     global LAST_SCAN_EPOCHS
 
     # By default, scan 1 day back in time
-    epoch_oldest = to_epoch(timenow) - 86600
+    epoch_oldest = to_epoch(timenow()) - 86600
 
     if source in LAST_SCAN_EPOCHS:
         # Scan announces until back to the publication times later than when the last scan started
         epoch_oldest = LAST_SCAN_EPOCHS[source]
     else:
         # Find out epoch of last scan
-        j = call_api('GET', '%s/v1/search/latest?source?%s' % (domain, source), ignore_error=True)
+        j = call_api('GET', '%s/v1/search/latest?source=%s' % (domain, source), ignore_error=True)
         if 'bdlitem' in j and 'epoch_published' in j['bdlitem']:
             epoch_oldest = j['bdlitem']['epoch_published']
             # If j is an error, just use the default epoch_oldest
@@ -97,7 +99,7 @@ def scan_source(source):
     log.info("Scanning back to epoch %s (%s)" % (epoch_oldest, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epoch_oldest))))
     call_api(
         'POST',
-        'https://crawler.bazardelux.com/v1/crawler/scan/%s' % source.lower(),
+        'https://crawler.bazardelux.com/v1/crawler/scan',
         {
             'source': source,
             'epoch_oldest': epoch_oldest,
@@ -218,7 +220,7 @@ def main(scan, clean, sitemap, host):
         return scheduler_call
 
     # schedule.every(3).seconds.do(wrapper(scan_source, 'TRADERA'))
-    schedule.every(60).minutes.do(wrapper(scan_source, 'TRADERA'))
+    schedule.every(120).minutes.do(wrapper(scan_source, 'TRADERA'))
     schedule.every().day.at('00:00').do(wrapper(clean_source, 'TRADERA'))
     schedule.every().day.at('12:00').do(wrapper(clean_source, 'TRADERA'))
     schedule.every().day.at('04:00').do(wrapper(update_sitemap))
