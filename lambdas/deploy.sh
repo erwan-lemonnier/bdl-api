@@ -154,6 +154,7 @@ create_lambda() {
     echo "=> Checking if function $LAMBDA_NAME exists"
     set +e
     eval aws lambda get-function \
+         --region $AWS_REGION \
          --profile $AWS_PROFILE \
          --function-name $LAMBDA_NAME 2> /dev/null
     RC=$?
@@ -161,6 +162,7 @@ create_lambda() {
     if [ $RC == 0 ]; then
         echo "=> Function $LAMBDA_NAME already exists. Deleting it first"
         aws lambda delete-function \
+            --region $AWS_REGION \
             --profile $AWS_PROFILE \
             --function-name $LAMBDA_NAME
     else
@@ -192,18 +194,21 @@ update_lambda() {
     # Stop if function does not exist
     echo "=> Checking if function $LAMBDA_NAME exists"
     eval aws lambda get-function \
+         --region $AWS_REGION \
          --profile $AWS_PROFILE \
          --function-name $LAMBDA_NAME
 
     # Update the function's code
     echo "=> Updating lambda $LAMBDA_NAME"
     aws lambda update-function-code \
+        --region $AWS_REGION \
         --function-name $LAMBDA_NAME \
         --zip-file fileb://function.zip \
         --profile $AWS_PROFILE
 
     # And update its configuration
     aws lambda update-function-configuration \
+        --region $AWS_REGION \
         --function-name $LAMBDA_NAME \
         --handler lambdas.lambdas.$METHOD_NAME \
         --runtime python3.7 \
@@ -215,7 +220,7 @@ update_lambda() {
 }
 
 if [ ! -z "$DO_TEST" ]; then
-    test_lambda udpate_sitemap
+    test_lambda update_sitemap
     test_lambda scan_source
 
 else
@@ -224,7 +229,7 @@ else
     build_zip
 
     if [ ! -z "$DO_CREATE" ]; then
-        create_lambda udpate_sitemap lambda_update_sitemap
+        create_lambda update_sitemap lambda_update_sitemap
         create_lambda scan_source lambda_scan_source
         # create_lambda clean_source lambda_clean_source
 
