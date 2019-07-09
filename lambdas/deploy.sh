@@ -38,6 +38,7 @@ WITH_DEBUG=
 DO_CREATE=
 DO_UPDATE=1
 DO_TEST=
+TEST_PAYLOAD='NOP'
 
 parse_args() {
     while [ "$1" != "" ]; do
@@ -45,6 +46,7 @@ parse_args() {
             "--debug")         set -x; DEBUG='true'; WITH_DEBUG="--debug";;
             "--create")        DO_CREATE=1; DO_UPDATE=;;
             "--test")          DO_TEST=1;;
+            "--test-fail")     DO_TEST=1; TEST_PAYLOAD='FAIL';;
             "-h" | "--help")   usage; exit 0;;
             *)                 echo "Unknown argument '$1' (-h for help)"; exit 0;;
         esac
@@ -128,7 +130,7 @@ test_lambda() {
         --profile $AWS_PROFILE \
         --function-name $LAMBDA_NAME \
         --invocation-type RequestResponse \
-        --payload '{"action": "NOP"}' \
+        --payload '{"action": "'$TEST_PAYLOAD'"}' \
         outfile
 
     OK=$(cat outfile | grep '"statusCode": 200' | wc -l)

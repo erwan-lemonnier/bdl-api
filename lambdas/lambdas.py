@@ -63,7 +63,7 @@ def call_api(method, url, data=None, ignore_error=False):
 
 
 #
-# SCAN
+# Lambda implementation
 #
 
 def scan_source(source=None, manual=False):
@@ -112,7 +112,6 @@ def update_sitemap(source=None, manual=False):
     )
 
 
-
 def clean_source(source=None, manual=False):
     source = source.upper()
     log.info("=> Cleaning up oldest announces from %s" % source)
@@ -126,7 +125,9 @@ def clean_source(source=None, manual=False):
     )
 
 
-
+#
+# Generic wraper for running pymacaron code in a lambda
+#
 
 def generic_handler(f, event, manual=False):
     """Execute a method while wrapping it in a pymacaron context.
