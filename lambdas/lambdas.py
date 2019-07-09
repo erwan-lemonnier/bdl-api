@@ -129,7 +129,7 @@ def clean_source(source=None, manual=False):
 # Generic wraper for running pymacaron code in a lambda
 #
 
-def generic_handler(f, event, manual=False):
+def generic_handler(f, event={}, manual=False):
     """Execute a method while wrapping it in a pymacaron context.
     Expects an event dict of the form:
     {
@@ -137,6 +137,8 @@ def generic_handler(f, event, manual=False):
       test: True|False,  (optional)
     }
     """
+
+    event['manual'] = manual
 
     with app.test_request_context(''):
         # Configure the error reporter and force pymacaron to report errors
@@ -154,7 +156,6 @@ def generic_handler(f, event, manual=False):
                     raise Exception("Do not know how to handle action %s" % event['action'])
             else:
                 # Just execute the callback
-                event['manual'] = manual
                 f(**event)
 
         except Exception as e:
@@ -162,6 +163,7 @@ def generic_handler(f, event, manual=False):
             exc_type, exc_value, exc_traceback = sys.exc_info()
             trace = traceback.format_exception(exc_type, exc_value, exc_traceback, 30)
             data['trace'] = trace
+            data['request']['params'] = event
             populate_error_report(data)
             report_error(
                 title='%s CRASH: %s' % ('MANUAL' if manual else 'LAMBDA', f.__name__),
