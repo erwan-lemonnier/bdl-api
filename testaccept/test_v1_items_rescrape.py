@@ -33,7 +33,7 @@ class Tests(common.BDLTests):
             [{'index': 'BDL', 'source': 'TRADERA'}, 400, 'INVALID_PARAMETER', "'percentage' is a required property"],
             [{'index': 'BDL', 'source': 'TRADERA', 'percentage': 'bob'}, 400, 'INVALID_PARAMETER', "'bob' is not of type 'integer'"],
             [{'index': 'BDL', 'source': 'TRADERA', 'percentage': 0}, 400, 'INVALID_PARAMETER', "percentage 0 is not between 1 and 100"],
-            [{'index': 'BDL', 'source': 'TRADERA', 'percentage': 101}, 400, 'INVALID_PARAMETER', "percentage 0 is not between 1 and 100"],
+            [{'index': 'BDL', 'source': 'TRADERA', 'percentage': 101}, 400, 'INVALID_PARAMETER', "percentage 101 is not between 1 and 100"],
         ]
 
         for data, status, error, msg in tests:
