@@ -1,26 +1,12 @@
 #!/usr/bin/env python3
 import os
 import sys
-import json
-import time
 import logging
-import requests
-import schedule
 import click
-import flask
-import traceback
 from pymacaron.config import get_config
-from pymacaron.auth import generate_token
-from pymacaron.utils import timenow, to_epoch
-from pymacaron.crash import set_error_reporter
-from pymacaron.crash import report_error
-from pymacaron.crash import populate_error_report
 
 
 log = logging.getLogger(__name__)
-
-
-app = flask.Flask(__name__)
 
 
 # Setup logging
@@ -39,108 +25,11 @@ sys.path.append(PATH_LIBS)
 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pym-config.yaml')
 get_config(config_path)
 
-from bdl.exceptions import bdl_error_reporter
-from bdl.io.slack import do_slack
-
-
-# If set, will override the default api|scraper.bazardelux.com target urls
-HOST = None
-
-# Is this a manual run, or a scheduled one?
-MANUAL=False
-
-
-def call_api(method, url, data=None, ignore_error=False):
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer %s' % generate_token('scheduler', data={}, expire_in=86400)
-    }
-    log.info("Calling %s %s" % (method, url))
-    if method == 'POST':
-        r = requests.post(url, data=json.dumps(data), headers=headers)
-    else:
-        r = requests.get(url, headers=headers)
-    log.info("=> Got: %s" % r.text)
-    if str(r.status_code) != '200':
-        raise Exception("Call to %s %s with data %s returned %s" % (method, url, data, r.text))
-    return r.json()
-
-
-#
-# SCAN
-#
-
-LAST_SCAN_EPOCHS = {
-    # source: epoch last scan
-}
-
-def scan_source(source):
-    source = source.upper()
-    log.info("=> Lauching scan of source %s" % source)
-
-    domain = HOST if HOST else 'https://api.bazardelux.com'
-
-    global LAST_SCAN_EPOCHS
-
-    # By default, scan 1 day back in time
-    epoch_oldest = to_epoch(timenow()) - 86600
-
-    if source in LAST_SCAN_EPOCHS:
-        # Scan announces until back to the publication times later than when the last scan started
-        epoch_oldest = LAST_SCAN_EPOCHS[source]
-    else:
-        # Find out epoch of last scan
-        j = call_api('GET', '%s/v1/search/latest?source=%s' % (domain, source), ignore_error=True)
-        if 'bdlitem' in j and 'epoch_published' in j['bdlitem']:
-            epoch_oldest = j['bdlitem']['epoch_published']
-            # If j is an error, just use the default epoch_oldest
-
-    # And launch a scan
-    log.info("Scanning back to epoch %s (%s)" % (epoch_oldest, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epoch_oldest))))
-    call_api(
-        'POST',
-        'https://crawler.bazardelux.com/v1/crawler/scan',
-        {
-            'source': source,
-            'epoch_oldest': epoch_oldest,
-        },
-    )
-
-    # Remember the new epoch_oldest
-    LAST_SCAN_EPOCHS[source] = epoch_oldest
-
-    do_slack(
-        "Scheduler: %slaunched scan of source %s" % ('manually ' if MANUAL else '', source),
-        channel=get_config().slack_scheduler_channel,
-    )
-
-
-def update_sitemap():
-    log.info("=> Lauching sitemap update")
-
-    domain = HOST if HOST else 'https://api.bazardelux.com'
-
-    call_api('GET', '%s/v1/bdl/sitemap/update' % domain)
-
-    do_slack(
-        "Scheduler: %supdated sitemap" % ('manually ' if MANUAL else ''),
-        channel=get_config().slack_scheduler_channel,
-    )
-
-
-
-def clean_source(source):
-    source = source.upper()
-    log.info("=> Cleaning up oldest announces from %s" % source)
-    # Count how many items are indexed from this source, and retrieve as many
-    # of them so that all will be scanned within a week
-    # Call v1/parse with the item's urls
-
-    do_slack(
-        "Scheduler: %slaunched cleanup of source %s" % ('manually ' if MANUAL else '', source),
-        channel=get_config().slack_scheduler_channel,
-    )
-
+from lambdas.lambdas import generic_handler
+from lambdas.lambdas import set_host
+from lambdas.lambdas import scan_source
+from lambdas.lambdas import clean_source
+from lambdas.lambdas import update_sitemap
 
 
 @click.command()
@@ -149,15 +38,12 @@ def clean_source(source):
 @click.option('--sitemap/--no-sitemap', required=False, metavar='', help="Update the bazardelux sitemap", default=False)
 @click.option('--host', required=False, metavar='PROTO://HOST:PORT', help="Call this proto://host:port instead of the default bazardelux.com server", default=False)
 def main(scan, clean, sitemap, host):
-    """Scheduler for bazardelux.com, in charge of running crawlers at regular
-    intervals, polling items to remove them when they are sold and updating the
-    sitemaps every day.
-
-    Can also be used to launch a single scan, clean or sitemap operation.
+    """Run actions on bazardelux.com, such as scanning for new announces, polling
+    items to remove them when they are sold and updating the sitemaps every
+    day.
 
     Examples:
 
-    tictac                      # Start the scheduler and keep it running #
     tictac --scan TRADERA       # Scan TRADERA                            #
     tictac --clean TRADERA      # Purge the oldest sold ads from TRADERA  #
     tictac --sitemap            # Update bazardelux's sitemap             #
@@ -165,71 +51,31 @@ def main(scan, clean, sitemap, host):
 
     """
 
-    # Configure the error reporter and force pymacaron to report errors
-    set_error_reporter(bdl_error_reporter)
-    os.environ['DO_REPORT_ERROR'] = "1"
-
-    global HOST
     if host:
-        HOST = host
+        set_host(host)
 
     #
     # Check arguments and run single tasks
     #
 
-    global MANUAL
 
     if scan or clean:
         if scan and clean:
             log.warn("You must provide only one of --scan or --clean")
             sys.exit(1)
         if scan:
-            MANUAL = True
-            scan_source(scan)
+            generic_handler(scan_source, {'source': scan}, manual=True)
             sys.exit(0)
         if clean:
-            MANUAL = True
-            clean_source(clean)
+            generic_handler(clean_source, {'source': clean}, manual=True)
             sys.exit(0)
     elif sitemap:
-        MANUAL = True
-        update_sitemap()
+        generic_handler(update_sitemap, {}, manual=True)
         sys.exit(0)
 
-    #
-    # Default to running the scheduler
-    #
+    log.warn("No action specified")
+    sys.exit(1)
 
-    def wrapper(method, *args, **kwargs):
-        def scheduler_call():
-            try:
-                method(*args, **kwargs)
-            except Exception as e:
-                data = {}
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                trace = traceback.format_exception(exc_type, exc_value, exc_traceback, 30)
-                data['trace'] = trace
-                populate_error_report(data)
-                report_error(
-                    title='SCHEDULER CRASH: %s%s' % (method.__name__, str(args)),
-                    data=data,
-                    caught=e,
-                    is_fatal=True,
-                )
-
-        return scheduler_call
-
-    # schedule.every(3).seconds.do(wrapper(scan_source, 'TRADERA'))
-    schedule.every(120).minutes.do(wrapper(scan_source, 'TRADERA'))
-    schedule.every().day.at('00:00').do(wrapper(clean_source, 'TRADERA'))
-    schedule.every().day.at('12:00').do(wrapper(clean_source, 'TRADERA'))
-    schedule.every().day.at('04:00').do(wrapper(update_sitemap))
-
-    log.info("Starting scheduler...")
-    while True:
-        schedule.run_pending()
-        time.sleep(10)
 
 if __name__ == "__main__":
-    with app.test_request_context(''):
-        main()
+    main()

@@ -45,6 +45,10 @@ from bdl.io.slack import do_slack
 # If set, will override the default api|scraper.bazardelux.com target urls
 HOST = None
 
+def set_host(host):
+    global HOST
+    HOST = host
+
 
 def call_api(method, url, data=None, ignore_error=False):
     headers = {
@@ -202,58 +206,6 @@ def lambda_update_sitemap(event, context):
 # Handle command line execution
 #
 
-@click.command()
-@click.option('--scan', required=False, metavar='SOURCE', help="Scan the given source", default=False)
-@click.option('--clean', required=False, metavar='SOURCE', help="Remove sold announces from this source", default=False)
-@click.option('--sitemap/--no-sitemap', required=False, metavar='', help="Update the bazardelux sitemap", default=False)
-@click.option('--host', required=False, metavar='PROTO://HOST:PORT', help="Call this proto://host:port instead of the default bazardelux.com server", default=False)
-def main(scan, clean, sitemap, host):
-    """Scheduler for bazardelux.com, in charge of running crawlers at regular
-    intervals, polling items to remove them when they are sold and updating the
-    sitemaps every day.
-
-    Can also be used to launch a single scan, clean or sitemap operation.
-
-    Examples:
-
-    tictac                      # Start the scheduler and keep it running #
-    tictac --scan TRADERA       # Scan TRADERA                            #
-    tictac --clean TRADERA      # Purge the oldest sold ads from TRADERA  #
-    tictac --sitemap            # Update bazardelux's sitemap             #
-    tictac --sitemap --host http://127.0.0.1:8080
-
-    """
-
-    # Configure the error reporter and force pymacaron to report errors
-    set_error_reporter(bdl_error_reporter)
-    os.environ['DO_REPORT_ERROR'] = "1"
-
-    global HOST
-    if host:
-        HOST = host
-
-    #
-    # Check arguments and run single tasks
-    #
-
-    if scan or clean:
-        if scan and clean:
-            log.warn("You must provide only one of --scan or --clean")
-            sys.exit(1)
-        if scan:
-            generic_handler(scan_source, {'source': scan}, manual=True)
-            sys.exit(0)
-        if clean:
-            generic_handler(clean_source, {'source': clean}, manual=True)
-            sys.exit(0)
-    elif sitemap:
-        generic_handler(update_sitemap, {}, manual=True)
-        sys.exit(0)
-
-    log.warn("No action specified")
-    sys.exit(1)
-
-
 if __name__ == "__main__":
-    with app.test_request_context(''):
-        main()
+    log.warn("To execute lambdas, use bin/tictac")
+    sys.exit(1)
