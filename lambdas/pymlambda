@@ -17,26 +17,24 @@ NAME=$(pymconfig --name)
 
 usage() {
     cat << EOF
-USAGE: lambdadeploy [--debug]
+USAGE: pymlambda [--debug]
 
-Deploy BDL lambdas to amazon and setup their scheduler.
+Deploy BDL lambdas to amazon.
 
 OPTIONS:
 
   --debug:          Be very verbose.
-  --create:         Create the lambda functions, instead of just updating them.
-  --test            Just test the lambdas.
+  --test            Test invoking the lambdas without actually executing them.
+  --test-fail       Test causing the lambda to fail.
 
 USAGE:
 
-./lambdadeploy
+./pymlambda.sh
 
 EOF
 }
 
 WITH_DEBUG=
-DO_CREATE=
-DO_UPDATE=1
 DO_TEST=
 TEST_PAYLOAD='NOP'
 
@@ -44,7 +42,6 @@ parse_args() {
     while [ "$1" != "" ]; do
         case $1 in
             "--debug")         set -x; DEBUG='true'; WITH_DEBUG="--debug";;
-            "--create")        DO_CREATE=1; DO_UPDATE=;;
             "--test")          DO_TEST=1;;
             "--test-fail")     DO_TEST=1; TEST_PAYLOAD='FAIL';;
             "-h" | "--help")   usage; exit 0;;
@@ -107,18 +104,15 @@ build_zip() {
 SECRETS=""
 for VAR in $(pymconfig --env-secrets)
 do
-    echo "=> Adding $VAR"
+    echo "=> Adding secret $VAR"
     VALUE=$(env | grep "^$VAR=" | cut -d '=' -f 2)
     if [ -z "$VALUE" ]; then
         echo "ERROR: variable $VAR has no value in env"
         exit 1
     fi
     SECRETS="$VAR=$VALUE,$SECRETS"
-    echo "ESCRETS IS NOW [$SECRETS]"
 done
 SECRETS=$(echo $SECRETS | sed -e "s|,$||")
-
-echo "=> SECRETS=$SECRETS"
 
 # Invoke a lambda to test it
 test_lambda() {
@@ -150,25 +144,6 @@ create_lambda() {
     METHOD_NAME=$2
     cd $TMPDIR
 
-    # Delete the function if it already exists
-    echo "=> Checking if function $LAMBDA_NAME exists"
-    set +e
-    eval aws lambda get-function \
-         --region $AWS_REGION \
-         --profile $AWS_PROFILE \
-         --function-name $LAMBDA_NAME 2> /dev/null
-    RC=$?
-    set -e
-    if [ $RC == 0 ]; then
-        echo "=> Function $LAMBDA_NAME already exists. Deleting it first"
-        aws lambda delete-function \
-            --region $AWS_REGION \
-            --profile $AWS_PROFILE \
-            --function-name $LAMBDA_NAME
-    else
-        echo "=> Function $LAMBDA_NAME does not exist yet"
-    fi
-
     # Create the function
     echo "=> Creating lambda $LAMBDA_NAME"
     aws lambda create-function \
@@ -191,13 +166,6 @@ update_lambda() {
     LAMBDA_NAME=$1
     cd $TMPDIR
 
-    # Stop if function does not exist
-    echo "=> Checking if function $LAMBDA_NAME exists"
-    eval aws lambda get-function \
-         --region $AWS_REGION \
-         --profile $AWS_PROFILE \
-         --function-name $LAMBDA_NAME
-
     # Update the function's code
     echo "=> Updating lambda $LAMBDA_NAME"
     aws lambda update-function-code \
@@ -219,25 +187,41 @@ update_lambda() {
         --profile $AWS_PROFILE
 }
 
+create_or_update_lambda() {
+    LAMBDA_NAME=$1
+    METHOD_NAME=$2
+
+    echo "=> Checking if function $LAMBDA_NAME exists"
+    set +e
+    eval aws lambda get-function \
+         --region $AWS_REGION \
+         --profile $AWS_PROFILE \
+         --function-name $LAMBDA_NAME 2> /dev/null
+    RC=$?
+    set -e
+    if [ $RC == 0 ]; then
+        echo "=> Function $LAMBDA_NAME already exists. Updating it"
+        update_lambda $LAMBDA_NAME
+    else
+        echo "=> Function $LAMBDA_NAME does not exist. Creating it"
+        create_lambda $LAMBDA_NAME $METHOD_NAME
+    fi
+}
+
+
 if [ ! -z "$DO_TEST" ]; then
     test_lambda update_sitemap
     test_lambda scan_source
+    test_lambda clean_source
 
 else
 
     create_virtenv
     build_zip
 
-    if [ ! -z "$DO_CREATE" ]; then
-        create_lambda update_sitemap lambda_update_sitemap
-        create_lambda scan_source lambda_scan_source
-        # create_lambda clean_source lambda_clean_source
-
-    elif [ ! -z "$DO_UPDATE" ]; then
-        update_lambda update_sitemap
-        create_lambda scan_source
-
-    fi
+    create_or_update_lambda update_sitemap lambda_update_sitemap
+    create_or_update_lambda scan_source lambda_scan_source
+    create_or_update_lambda clean_source lambda_clean_source
 fi
 
 echo "=> Done."

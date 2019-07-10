@@ -1,7 +1,6 @@
 import os
 import imp
 import logging
-from bdl.db.item import get_item_by_native_url
 
 
 common = imp.load_source('common', os.path.join(os.path.dirname(__file__), 'common.py'))
