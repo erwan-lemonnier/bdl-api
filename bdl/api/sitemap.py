@@ -7,6 +7,7 @@ import re
 import xml.etree.ElementTree as ET
 from boto.s3.key import Key
 from unidecode import unidecode
+from pymacaron_async import asynctask
 from pymacaron.utils import timenow
 from pymacaron_core.swagger.apipool import ApiPool
 from bdl.utils import html_to_unicode
@@ -287,9 +288,6 @@ def get_dates_in_month(year, month):
 
     return dates
 
-#
-# API endpoint
-#
 
 STATIC_URLS = [
     'en', 'sv', 'fr',
@@ -308,10 +306,12 @@ def generate_sitemap_static_pages():
     smap_name = 'sitemap-bazardelux-pages.xml'
     upload_sitemap(smap, smap_name)
 
+#
+# API endpoint
+#
 
-def do_generate_sitemap():
-    """Update the sitemap and regenerate parts of it that may have changed"""
-
+@asynctask()
+def async_generate_sitemap():
     # Generate sitemap of static pages
     generate_sitemap_static_pages()
 
@@ -336,4 +336,8 @@ def do_generate_sitemap():
     # And ping search engines
     ping_search_engines()
 
+
+def do_generate_sitemap():
+    """Update the sitemap and regenerate parts of it that may have changed"""
+    async_generate_sitemap()
     return ApiPool.api.model.Ok()
