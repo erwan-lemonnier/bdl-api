@@ -305,34 +305,34 @@ paths:
             $ref: '#/definitions/Error'
 
 
-  /v1/items/rescan:
+  /v1/items/rescrape:
     post:
-      summary: Re-scan N oldest items.
+      summary: Re-scrape N oldest items.
       description: |
 
-        Re-scan the oldest items from a given source, to update their info or
+        Re-scrape the oldest items from a given source, to update their info or
         remove them if they have been sold.
 
         Arguments are a source name, and a 2 or 3 digit number indicating the
         percentage of items, starting from the oldest first, that should be
-        re-scanned. For example: POST {'source': 'TRADERA', 'percentage': 60}
-        will re-scan 60% of all tradera announces still listed for sale,
+        re-scraped. For example: POST {'source': 'TRADERA', 'percentage': 60}
+        will re-scrape 60% of all tradera announces still listed for sale,
         starting from the oldest one.
 
       parameters:
         - in: body
           name: body
-          description: How many items to rescan and from where.
+          description: How many items to rescrape and from where.
           required: true
           schema:
-            $ref: "#/definitions/RescanData"
+            $ref: "#/definitions/RescrapeData"
 
       tags:
         - Items
       produces:
         - application/json
-      x-bind-server: bdl.api.items.do_rescan_items
-      x-bind-client: rescan_items
+      x-bind-server: bdl.api.items.do_rescrape_items
+      x-bind-client: rescrape_items
       x-decorate-server: pymacaron.auth.requires_auth
       x-decorate-request: pymacaron.auth.add_auth
       responses:
@@ -375,9 +375,9 @@ paths:
 definitions:
 
 
-  RescanData:
+  RescrapeData:
     type: object
-    description: How many items to rescan from which source.
+    description: How many items to rescrape from which source.
     properties:
       index:
         type: string
@@ -390,7 +390,7 @@ definitions:
         description: From which source?
       percentage:
         type: integer
-        description: An integer between 1 and 100 indicating the percentage of items currently listed to rescan.
+        description: An integer between 1 and 100 indicating the percentage of items currently listed to rescrape.
     required:
       - index
       - source

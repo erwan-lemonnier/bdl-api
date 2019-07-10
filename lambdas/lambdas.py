@@ -133,7 +133,7 @@ def update_sitemap(source=None, manual=False):
 
 
 def clean_source(source=None, percentage=50, manual=False):
-    """Rescan a percentage of all listed announces from a given source, starting
+    """Rescrape a percentage of all listed announces from a given source, starting
     with the oldest ones.
 
     Event format:
@@ -152,7 +152,7 @@ def clean_source(source=None, percentage=50, manual=False):
 
     call_api(
         'POST',
-        '%s/v1/items/rescan' % domain,
+        '%s/v1/items/rescrape' % domain,
         {
             'source': source,
             'percentage': percentage,

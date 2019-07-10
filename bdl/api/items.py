@@ -118,8 +118,8 @@ def do_archive_item(data, item_id=None):
     return item
 
 
-def do_rescan_items(data):
-    """Rescan a percentage of all listed announces from a given source, starting
+def do_rescrape_items(data):
+    """Re-scrape a percentage of all listed announces from a given source, starting
     with the oldest ones.
 
     """
@@ -131,13 +131,13 @@ def do_rescan_items(data):
     if data.percentage < 1 or data.percentage > 100:
         raise InvalidDataError("percentage %s is not between 1 and 100" % data.percentage)
 
-    rescan_items_async(data.source, data.percentage)
+    rescrape_items_async(data.source, data.percentage)
 
     return ApiPool.api.model.Ok()
 
 
 @asynctask()
-def rescan_items_async(source, percentage):
+def rescrape_items_async(source, percentage):
 
     # How many items do we have listed from this source?
     res = es_search_index(
@@ -151,10 +151,10 @@ def rescan_items_async(source, percentage):
 
     total_hits = res['hits']['total']
 
-    # How many items should we rescan?
-    count_rescan = int(total_hits * percentage / 100)
+    # How many items should we rescrape?
+    count_rescrape = int(total_hits * percentage / 100)
 
-    # Now get count_rescan items from the index, sorting them by last date_last_checked
+    # Now get count_rescrape items from the index, sorting them by last date_last_checked
     batch_size = 100
     esquery = {
         "size": batch_size,
@@ -171,13 +171,13 @@ def rescan_items_async(source, percentage):
         }
     }
 
-    for doc in get_all_docs(esquery, 'bdlitems-live', 'BDL_ITEM', batch_size=batch_size, limit=count_rescan):
+    for doc in get_all_docs(esquery, 'bdlitems-live', 'BDL_ITEM', batch_size=batch_size, limit=count_rescrape):
         i = doc_to_item(doc)
 
         # And schedule a scan of each of those items
 
         # Note: does not matter if the scrape call fails. It will be retried on
-        # the next rescan
+        # the next rescrape
         ApiPool.crawler.client.scrape_page(
             ApiPool.crawler.model.ScrapeSettings(
                 source=i.source,
@@ -186,7 +186,7 @@ def rescan_items_async(source, percentage):
         )
 
     do_slack(
-        "Rescan %s oldest items from %s (out of %s)" % (count_rescan, source, total_hits),
+        "Laucnhed re-scrape %s oldest items from %s (out of %s)" % (count_rescrape, source, total_hits),
         channel=get_config().slack_scheduler_channel,
     )
     pass

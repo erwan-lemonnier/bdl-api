@@ -12,9 +12,9 @@ log = logging.getLogger(__name__)
 
 class Tests(common.BDLTests):
 
-    def test_v1_item_xxx_archive__auth_required(self):
+    def test_v1_items_rescrape__auth_required(self):
         self.assertPostReturnError(
-            'v1/items/rescan',
+            'v1/items/rescrape',
             {
                 'index': 'BDL',
                 'source': 'TRADERA',
@@ -25,7 +25,7 @@ class Tests(common.BDLTests):
         )
 
 
-    def test_v1_item_xxx_archive__invalid_data(self):
+    def test_v1_items_rescrape__invalid_data(self):
         tests = [
             [{}, 400, 'INVALID_PARAMETER', "'index' is a required property"],
             [{'index': 'BOB'}, 400, 'INVALID_PARAMETER', "'BOB' is not one of"],
@@ -38,7 +38,7 @@ class Tests(common.BDLTests):
 
         for data, status, error, msg in tests:
             j = self.assertPostReturnError(
-                'v1/items/rescan',
+                'v1/items/rescrape',
                 data,
                 status,
                 error,
