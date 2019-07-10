@@ -12,6 +12,7 @@ from pymacaron.utils import timenow
 from pymacaron_core.swagger.apipool import ApiPool
 from bdl.utils import html_to_unicode
 from bdl.io.s3 import get_s3_conn
+from bdl.io.slack import do_slack
 from bdl.api.search import doc_to_item
 from bdl.db.elasticsearch import get_all_docs
 
@@ -224,6 +225,8 @@ def generate_sitemap_announces(year, month):
 
     upload_sitemap(smap, smap_name)
 
+    return len(urls)
+
 
 #
 # Utils
@@ -317,7 +320,7 @@ def async_generate_sitemap():
 
     # Regenerate sitemap for the current month
     now = timenow()
-    generate_sitemap_announces(now.year, now.month)
+    count = generate_sitemap_announces(now.year, now.month)
 
     # List all sitemaps for this site
     log.info("Listing all sitemaps in static.bazardelux.com")
@@ -335,6 +338,8 @@ def async_generate_sitemap():
 
     # And ping search engines
     ping_search_engines()
+
+    do_slack("Updated sitemaps: the current period %04d-%02d now contains %s announces" % (now.year, now.month, count))
 
 
 def do_generate_sitemap():
