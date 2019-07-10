@@ -71,6 +71,11 @@ def process_items(index, source, real, *jsons):
             real=real,
         )
 
+        do_slack(
+            "Process: doing %s on item %s (%s)" % (action, item_id, o.native_url),
+            channel=get_config().slack_api_channel,
+        )
+
         results.results.append(
             ApiPool.api.model.ProcessResult(
                 action=action,
