@@ -157,8 +157,11 @@ def es_search_index(index_name=None, doc_type=None, sort=[], query=None, page=No
             raise e
 
 
-def get_all_docs(query, index_name, doc_type, batch_size=100):
-    """Given an elasticsearch query, return all matching ES documents (can be a lot)"""
+def get_all_docs(query, index_name, doc_type, batch_size=100, limit=None):
+    """Given an elasticsearch query, return all matching ES documents (can be a
+    lot). Optionally stop when reaching a limit number of hits.
+
+    """
 
     es = get_es()
 
@@ -171,6 +174,8 @@ def get_all_docs(query, index_name, doc_type, batch_size=100):
         scroll='2m',
     )
 
+    count = 0
+
     scroll_id = res['_scroll_id']
     log.info("scroll_id=%s" % scroll_id)
 
@@ -179,6 +184,9 @@ def get_all_docs(query, index_name, doc_type, batch_size=100):
 
     # Return those results
     for doc in res['hits']['hits']:
+        count = count + 1
+        if limit and count > limit:
+            return
         yield doc
 
     # Now loop on results
@@ -190,6 +198,9 @@ def get_all_docs(query, index_name, doc_type, batch_size=100):
         )
 
         for doc in res['hits']['hits']:
+            count = count + 1
+            if limit and count > limit:
+                return
             yield doc
 
         if len(res['hits']['hits']) < batch_size:

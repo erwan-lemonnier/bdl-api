@@ -5,7 +5,6 @@ import json
 import time
 import logging
 import requests
-import click
 import flask
 import traceback
 from pymacaron.config import get_config
@@ -71,6 +70,16 @@ def call_api(method, url, data=None, ignore_error=False):
 #
 
 def scan_source(source=None, manual=False):
+    """Launch a scan of new announces from the given source, back in time to a
+    certain epoch.
+
+    Event format:
+    {
+      "source": "TRADERA"
+    }
+
+    """
+
     source = source.upper()
     log.info("=> Lauching scan of source %s" % source)
 
@@ -104,6 +113,13 @@ def scan_source(source=None, manual=False):
 
 
 def update_sitemap(source=None, manual=False):
+    """Update the sitemap of bazardelux.com.
+
+    Event format:
+    {}
+
+    """
+
     log.info("=> Lauching sitemap update")
 
     domain = HOST if HOST else 'https://api.bazardelux.com'
@@ -116,12 +132,33 @@ def update_sitemap(source=None, manual=False):
     )
 
 
-def clean_source(source=None, manual=False):
+def clean_source(source=None, percentage=50, manual=False):
+    """Rescan a percentage of all listed announces from a given source, starting
+    with the oldest ones.
+
+    Event format:
+    {
+      "source": "TRADERA",
+      "percentage": 50
+    }
+
+    """
+
     source = source.upper()
+
     log.info("=> Cleaning up oldest announces from %s" % source)
-    # Count how many items are indexed from this source, and retrieve as many
-    # of them so that all will be scanned within a week
-    # Call v1/parse with the item's urls
+
+    domain = HOST if HOST else 'https://api.bazardelux.com'
+
+    call_api(
+        'POST',
+        '%s/v1/items/rescan' % domain,
+        {
+            'source': source,
+            'percentage': percentage,
+            'index': 'BDL',
+        },
+    )
 
     do_slack(
         "Scheduler: %slaunched cleanup of source %s" % ('manually ' if manual else '', source),

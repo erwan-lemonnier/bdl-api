@@ -67,7 +67,7 @@ def main(scan, clean, sitemap, host):
             generic_handler(scan_source, {'source': scan}, manual=True)
             sys.exit(0)
         if clean:
-            generic_handler(clean_source, {'source': clean}, manual=True)
+            generic_handler(clean_source, {'source': clean, 'percentage': 20}, manual=True)
             sys.exit(0)
     elif sitemap:
         generic_handler(update_sitemap, {}, manual=True)

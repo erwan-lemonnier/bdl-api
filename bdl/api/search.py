@@ -4,7 +4,7 @@ from pymacaron_core.swagger.apipool import ApiPool
 from bdl.exceptions import InternalServerError
 from bdl.exceptions import ESItemNotFoundError
 from bdl.model.item import model_to_item
-from bdl.db.elasticsearch import es_search_index, es_delete_doc
+from bdl.db.elasticsearch import es_search_index
 
 
 log = logging.getLogger(__name__)
