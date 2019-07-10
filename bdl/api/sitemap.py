@@ -15,6 +15,7 @@ from bdl.io.s3 import get_s3_conn
 from bdl.io.slack import do_slack
 from bdl.api.search import doc_to_item
 from bdl.db.elasticsearch import get_all_docs
+from pymacaron.config import get_config
 
 
 log = logging.getLogger(__name__)
@@ -339,7 +340,10 @@ def async_generate_sitemap():
     # And ping search engines
     ping_search_engines()
 
-    do_slack("Updated sitemaps: the current period %04d-%02d now contains %s announces" % (now.year, now.month, count))
+    do_slack(
+        "Updated sitemaps: the current period %04d-%02d now contains %s announces" % (now.year, now.month, count),
+        channel=get_config().slack_scheduler_channel,
+    )
 
 
 def do_generate_sitemap():
