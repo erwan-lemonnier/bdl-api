@@ -87,18 +87,9 @@ def do_search_items(query=None, page=0, page_size=None, real=None, location=None
     count_found = res['hits']['total']
     items = []
     for doc in res['hits']['hits']:
-        j = doc['_source']
-
-        # NOTE: ugly patch to cleanup early broken data - Remove soon
-        if j['date_created'] <= '2019-06-01':
-            log.debug("ES document %s is outdated (%s) - Deleting it" % (j['item_id'], j['date_created']))
-            es_delete_doc(index_name, 'BDL_ITEM', j['uid'])
-            count_found = count_found - 1
-            continue
-
         import json
-        log.debug("Looking at item: %s" % json.dumps(j, indent=4))
-        items.append(doc_to_item(j))
+        log.debug("Looking at item: %s" % json.dumps(doc['_source'], indent=4))
+        items.append(doc_to_item(doc))
 
     # Query urls for the current and next page
     def gen_url(page):
