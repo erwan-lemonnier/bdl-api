@@ -144,8 +144,8 @@ def get_items_forsale_for_period(year, month):
         esquery = {
             "size": batch_size,
             "query": {
-                "match" : {
-                    "date_created" : create_date
+                "match": {
+                    "date_created": create_date
                 }
             }
         }

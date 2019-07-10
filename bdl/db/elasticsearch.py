@@ -174,7 +174,7 @@ def get_all_docs(query, index_name, doc_type, batch_size=100):
     scroll_id = res['_scroll_id']
     log.info("scroll_id=%s" % scroll_id)
 
-    if not 'hits' in res or len(res['hits']['hits']) == 0:
+    if 'hits' not in res or len(res['hits']['hits']) == 0:
         return
 
     # Return those results
