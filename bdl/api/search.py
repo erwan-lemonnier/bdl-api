@@ -75,9 +75,9 @@ def do_search_items(query=None, page=0, page_size=None, real=None, location=None
         index_name=index_name,
         doc_type='BDL_ITEM',
         sort=[
+            {'date_created': {'order': 'desc'}},
             {'count_views': {'order': 'desc'}},
             {'display_priority': {'order': 'desc'}},
-            {'date_created': {'order': 'desc'}},
         ],
         query=internal_query,
         page=page,
