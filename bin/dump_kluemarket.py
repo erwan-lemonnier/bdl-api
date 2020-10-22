@@ -20,8 +20,8 @@ INDEX_FORSALE = 'items-forsale-live'
 def get_all(index, doc_type):
     es = get_es(
         host='search-kluesearch-g6dmxzzuvvzpms2yjrlvvuk5ku.eu-west-1.es.amazonaws.com',
-        aws_access_key_id='AKIAIEUNN657H6CM3V2A',
-        aws_secret_access_key='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',
+        aws_access_key_id='..',
+        aws_secret_access_key='..',
         aws_region='eu-west-1',
     )
     index_name = index
