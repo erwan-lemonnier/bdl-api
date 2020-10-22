@@ -23,7 +23,7 @@ live_host: api.bazardelux.com
 with_async: true
 worker_count: 4
 
-slack_url: https://hooks.slack.com/services/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
+slack_url: xxx
 slack_api_channel: _api
 slack_error_channel: _errors
 slack_warnings_channel: _warnings
