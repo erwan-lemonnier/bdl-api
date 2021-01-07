@@ -10,7 +10,7 @@ Unidecode==0.4.19
 boto
 boto3
 beautifulsoup4==4.5.1
-lxml==3.6.4
+lxml==4.6.2
 Pillow==3.4.2
 s3imageresizer
 schedule
