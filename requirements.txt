@@ -11,6 +11,6 @@ boto
 boto3
 beautifulsoup4==4.5.1
 lxml==3.6.4
-Pillow==3.4.2
+Pillow==8.1.1
 s3imageresizer
 schedule
